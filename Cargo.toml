@@ -1,0 +1,13 @@
+[package]
+name = "glry"
+version = "0.1.0"
+authors = ["Michael Ziegler <michael.ziegler@proemion.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lazy_static = "1.0"
+gotham = "0.4.0"
+mime = "0.3"
+tera = "0.11"

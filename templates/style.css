@@ -1,0 +1,99 @@
+body {
+	background-color: #101010;
+	color: #cccccc;
+}
+
+a {
+	color: #cccccc;
+}
+
+header {
+	background-image: -moz-linear-gradient(top, #8e8e8e 0%, #1f1f1f 100%);
+	background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#8e8e8e), color-stop(100%,#1f1f1f));
+	background-image: -webkit-linear-gradient(top, #8e8e8e 0%,#1f1f1f 100%);
+	background-image: -o-linear-gradient(top, #8e8e8e 0%,#1f1f1f 100%);
+	background-image: -ms-linear-gradient(top, #8e8e8e 0%,#1f1f1f 100%);
+	background-image: linear-gradient(top, #8e8e8e 0%,#1f1f1f 100%);
+	height: 20px;
+	padding-top: 30px;
+	padding-left: 10px;
+	margin: 10px;
+}
+
+#content {
+	background-color: #1f1f1f;
+	margin: 10px;
+}
+
+#imagelist, #albumlist {
+	margin: 0 auto;
+	width: 88%;
+}
+
+#albumlist li {
+	background-color: #1f1f1f;
+	border: 2px solid #242424;
+	list-style: none outside none;
+	margin: 10px;
+	width: 660;
+	height: 340;
+	float: left;
+}
+
+#imagelist li {
+	background-color: #1f1f1f;
+	border: 2px solid #242424;
+	list-style: none outside none;
+	margin: 10px;
+	padding: 3px 3px 0px 3px;
+	float: left;
+}
+
+#imagelist li.active {
+	border: 2px solid #24fe24;
+}
+
+
+div.mainimagewrapper {
+	text-align: center;
+	width: 100%;
+}
+
+div.mainimagewrapper a {
+	cursor: zoom-in;
+}
+
+#content img {
+	max-width: 100%;
+	border: none;
+}
+
+footer ul img {
+	width: 100%;
+	border: none;
+}
+
+footer {
+	background-image: -moz-linear-gradient(top, #1f1f1f 0%, #8e8e8e 100%);
+	background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#1f1f1f), color-stop(100%,#8e8e8e));
+	background-image: -webkit-linear-gradient(top, #1f1f1f 0%,#8e8e8e 100%);
+	background-image: -o-linear-gradient(top, #1f1f1f 0%,#8e8e8e 100%);
+	background-image: -ms-linear-gradient(top, #1f1f1f 0%,#8e8e8e 100%);
+	background-image: linear-gradient(top, #1f1f1f 0%,#8e8e8e 100%);
+	min-height: 200px;
+	margin: 10px;
+}
+
+#noscript {
+	padding: 50px;
+	background-color: #FFE4E4;
+	border: 1px dashed #FF6666;
+	color: #6F6F6E;
+	font-weight: bold;
+}
+
+div.contentpanel {
+	width: 80%;
+	margin: 0 auto;
+	padding: 5px 0;
+}

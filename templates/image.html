@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{# kate: space-indent on; indent-width 2; replace-tabs on; #}
+{% block head %}
+  {{ super() }}
+  <link href="http://svedr.in/_rss" rel="alternate"
+    type="application/rss+xml" title="Svedrin's Gallery" />
+  <link href="http://svedr.in/_rss/{{ album }}" rel="alternate"
+    type="application/rss+xml" title="Svedrin's Gallery :: {{ album|capitalize }}" />
+  <link href="http://svedr.in/_rss/{{ album }}/{{ image }}" rel="alternate"
+    type="application/rss+xml" title="Svedrin's Gallery :: {{ album|capitalize }} :: {{ image }}" />
+{% endblock %}
+{% block header %}
+  <a href="/">&nbsp;&nbsp;/&nbsp;&nbsp;</a>
+  <a href="/{{ album }}">{{ album }}</a> /
+  <a href="/{{ album }}/{{ image }}">{{ image }}</a>
+  <a href="/{{ album }}/{{ image }}.html">.html</a>
+{% endblock %}
+{% block content %}
+  <div class="contentpanel">
+    <div class="mainimagewrapper"><a href="/{{ album }}/{{ image }}"><img
+      src="/{{ album }}/previews/{{ image }}"
+      alt="{{ image }}" /></a></div>
+  </div>
+  {% if exif %}
+    <div class="contentpanel">
+      Shot with {{ exif['Image Model'] }} at {{ exif['EXIF DateTimeOriginal'] }}
+      {% if imgformat %}                   — <span title="Format">{{ imgformat }}</span>{% endif %}
+      {% if exif['EXIF ExposureTime'] %}   — <span title="Exposure Time">{{ exif['EXIF ExposureTime']|exifquot }}s</span>
+      {% if exif['EXIF ExposureBiasValue'] and exif['EXIF ExposureBiasValue']|exifquot != 0 %} (<span title="Exposure Bias">{{ exif['EXIF ExposureBiasValue'] }}EV)</span>{% endif %}
+      {% endif %}
+      {% if exif['EXIF ISOSpeedRatings'] %}— <span title="ISO">ISO {{ exif['EXIF ISOSpeedRatings'] }}</span>{% endif %}
+      {% if exif['EXIF FocalLength'] %}    — <span title="Focal Length">{{ exif['EXIF FocalLength']|exifquot }}mm</span>{% endif %}
+      {% if exif['EXIF FNumber'] %}        — <span title="F Number">F{{ exif['EXIF FNumber']|exifquot }}</span>{% endif %}
+      {% if exif['EXIF Flash'] %}          — <span title="Flash">{{ exif['EXIF Flash'] }}</span>{% endif %}
+      {% if exif['Image Software'] %}
+        — Revised using {{ exif['Image Software'] }}
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}
+{% block footer %}
+  {{ super() }}
+  <ul id="imagelist">
+  {% for ver in versions %}
+    {% if ver != image %}
+      <li><a href="/{{album}}/{{ ver }}.html"><img src="/{{album}}/thumbs/{{ ver }}" alt="{{ ver }}" /></a></li>
+    {% else %}
+      <li class="active"><img src="/{{album}}/thumbs/{{ ver }}" alt="{{ ver }}" /></li>
+    {% endif %}
+  {% endfor %}
+  </ul>
+  <div style="clear: both"></div>
+{% endblock %}
