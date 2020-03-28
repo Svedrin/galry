@@ -1,11 +1,14 @@
+#![feature(proc_macro_hygiene, decl_macro)]
+
 #[macro_use] extern crate lazy_static;
+#[macro_use] extern crate rocket;
+
 extern crate clap;
 extern crate tera;
 
+use std::path::{Path,PathBuf};
 use clap::{App, Arg};
-use gotham::router::builder::*;
-use gotham::router::Router;
-use gotham::state::State;
+use rocket::response::content;
 use tera::{Context, Tera};
 
 lazy_static! {
@@ -19,28 +22,31 @@ lazy_static! {
     };
 }
 
-pub fn css(state: State) -> (State, &'static str) {
-    (state, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/style.css")))
+struct RootDir(PathBuf);
+
+#[get("/_style.css")]
+fn css() -> &'static str {
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/style.css"))
 }
 
-/// Create a `Handler` that is invoked for requests to the path "/"
-pub fn say_hello(state: State) -> (State, (mime::Mime, String)) {
+#[get("/<path..>")]
+pub fn serve_path(path: PathBuf) -> content::Html<String> {
+    println!("ohai: {:?}", path);
     let mut context = Context::new();
     context.insert("albums", "dunno");
     context.insert("imagejson", "'OMFG'");
     context.insert("images", "5");
     context.insert("size", "3");
     context.insert("count", "10");
-    let rendered = TEMPLATES.render("base.html", &context).unwrap();
-    (state, (mime::TEXT_HTML, rendered))
+    content::Html(
+        TEMPLATES.render("base.html", &context)
+            .expect("failed to render template")
+    )
 }
 
-fn router() -> Router {
-    build_simple_router(|route| {
-        // For the path "/" invoke the handler "say_hello"
-        route.get("/").to(say_hello);
-        route.get("/_style.css").to(css);
-    })
+#[get("/")]
+pub fn index() -> content::Html<String> {
+    serve_path(PathBuf::from(""))
 }
 
 pub fn main() {
@@ -48,22 +54,18 @@ pub fn main() {
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
         .about("single-binary image gallery")
-        .arg(Arg::with_name("port")
-            .short("p")
-            .long("port")
-            .takes_value(true)
-            .help("Port number to use [8080]"))
         .arg(Arg::with_name("directory")
             .help("Directory with images to serve")
             .required(true)
             .index(1))
         .get_matches();
 
-    let addr = format!(
-        ":::{}",
-        matches.value_of("port").unwrap_or("8080").parse::<u16>()
-            .expect("Port argument must be a number between 1 and 65535")
-    );
-    println!("Listening for requests at http://{}", addr);
-    gotham::start(addr, router())
+    rocket::ignite()
+        .manage(RootDir(PathBuf::from(
+            matches
+                .value_of("directory")
+                .expect("couldn't get directory arg")
+        )))
+        .mount("/", routes![index, serve_path, css])
+        .launch();
 }

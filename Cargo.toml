@@ -9,6 +9,5 @@ edition = "2018"
 [dependencies]
 clap = "*"
 lazy_static = "1.0"
-gotham = "0.4.0"
-mime = "0.3"
+rocket = "0.4.4"
 tera = "1.0"
