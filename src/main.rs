@@ -1,8 +1,5 @@
 //! An introduction to fundamental `Router` and `Router Builder` concepts to create a routing tree.
-#[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
+#[macro_use] extern crate lazy_static;
 extern crate tera;
 
 use gotham::router::builder::*;
@@ -11,10 +8,15 @@ use gotham::state::State;
 use tera::{Context, Tera};
 
 lazy_static! {
-    pub static ref TERA: Tera =
-        compile_templates!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*"));
+    pub static ref TEMPLATES: Tera = {
+        let mut tera = Tera::default();
+        tera.add_raw_templates(vec![
+            ("base.html",  include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/base.html"))),
+            ("index.html", include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/index.html"))),
+        ]).expect("couldn't add template to Tera");
+        tera
+    };
 }
-
 
 pub fn css(state: State) -> (State, &'static str) {
     (state, include_str!("../templates/style.css"))
@@ -28,7 +30,7 @@ pub fn say_hello(state: State) -> (State, (mime::Mime, String)) {
     context.insert("images", "5");
     context.insert("size", "3");
     context.insert("count", "10");
-    let rendered = TERA.render("base.html", &context).unwrap();
+    let rendered = TEMPLATES.render("base.html", &context).unwrap();
     (state, (mime::TEXT_HTML, rendered))
 }
 
