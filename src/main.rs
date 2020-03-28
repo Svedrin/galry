@@ -32,6 +32,11 @@ fn css() -> &'static str {
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/style.css"))
 }
 
+#[get("/_album.js")]
+fn js() -> &'static str {
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/album.js"))
+}
+
 #[get("/_/<what>/<path..>", rank=1)]
 fn serve_file(what: String, path: PathBuf, rootdir: State<RootDir>) -> Option<NamedFile> {
     // What is either preview, thumb or img
@@ -126,6 +131,6 @@ pub fn main() {
                 .value_of("directory")
                 .expect("couldn't get directory arg")
         )))
-        .mount("/", routes![index, serve_page, serve_file, css])
+        .mount("/", routes![index, serve_page, serve_file, css, js])
         .launch();
 }
