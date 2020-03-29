@@ -12,31 +12,8 @@ steps:
     - rustup install nightly
     - cargo +nightly check --release
     - cargo +nightly build --release
-
----
-kind: pipeline
-name: linux-arm
-
-platform:
-  arch: arm
-  os: linux
-
-steps:
-- name: build for Armv7l
-  image: rust:latest
-  environment:
-    RUSTFLAGS: -D warnings
-    CC: /usr/bin/musl-gcc
-  commands:
-    - apt-get update
-    - apt-get install -y musl-dev musl-tools
-    - rustup target add armv7-unknown-linux-musleabihf
-    - rustup target list --installed
-    - rustup install nightly
-    - cargo +nightly check --release --target armv7-unknown-linux-musleabihf
-    - cargo +nightly build --release --target armv7-unknown-linux-musleabihf
 ---
 kind: signature
-hmac: 377853a485541d247d7953b51c670288557e00e5f4df20d04c7b97eec78010ae
+hmac: 93cf0b976ca7880c3c7e9be4868e30f9c02bf2ee0a1558c2b1fa89f31abe86e5
 
 ...
