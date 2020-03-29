@@ -12,8 +12,22 @@ steps:
     - rustup install nightly
     - cargo +nightly check --release
     - cargo +nightly build --release
+
+- name: build docker image
+  image: plugins/docker
+  settings:
+    repo: svedrin/galry
+    username: svedrin
+    password:
+      from_secret: docker-registry-pw
+    cache_from: "svedrin/galry:latest"
+  when:
+    event:
+      exclude:
+      - pull_request
+
 ---
 kind: signature
-hmac: 93cf0b976ca7880c3c7e9be4868e30f9c02bf2ee0a1558c2b1fa89f31abe86e5
+hmac: 414598b54dc86429bf0a9b9b1e041f0cb504a7e074e310f7fd33b0d1138c03aa
 
 ...
