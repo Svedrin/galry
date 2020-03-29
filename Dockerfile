@@ -6,4 +6,4 @@ WORKDIR /pictures
 
 EXPOSE 8080
 ENTRYPOINT ["dumb-init", "--"]
-CMD [ "/usr/local/bin/galry" ]
+CMD [ "/usr/local/bin/galry", "/pictures" ]
