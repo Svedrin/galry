@@ -1,0 +1,33 @@
+---
+kind: pipeline
+name: default
+
+steps:
+- name: build for Linux
+  image: rust:alpine
+  environment:
+    RUSTFLAGS: -D warnings
+  commands:
+    - apk add --no-cache musl-dev
+    - rustup install nightly
+    - cargo +nightly check --release
+    - cargo +nightly build --release
+
+- name: build for Armv7l
+  image: rust:slim-buster
+  environment:
+    RUSTFLAGS: -D warnings
+    CC: /usr/bin/musl-gcc
+  commands:
+    - apt-get update
+    - apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+    - rustup target add armv7-unknown-linux-gnueabihf
+    - rustup target list --installed
+    - rustup install nightly
+    - cargo +nightly check --release --target armv7-unknown-linux-gnueabihf
+    - cargo +nightly build --release --target armv7-unknown-linux-gnueabihf
+---
+kind: signature
+hmac: 7d518f0c7f746b0125f201df4c6ef0fdd3b005062993ec3e69bf3019a1666ce3
+
+...
