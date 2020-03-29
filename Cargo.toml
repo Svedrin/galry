@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 clap = "*"
 image = "0.23.2"
+kamadak-exif = "0.5.1"
 lazy_static = "1.0"
 rocket = "0.4.4"
 tera = "1.0"

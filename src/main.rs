@@ -4,12 +4,14 @@
 #[macro_use] extern crate rocket;
 
 extern crate clap;
+extern crate exif;
 extern crate image;
 extern crate tera;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 use clap::{App, Arg};
+use exif::{In, Reader, Tag};
 use rocket::State;
 use rocket::response::{content,NamedFile,Responder};
 use tera::{Context, Tera};
@@ -101,10 +103,6 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
     // "something.jpg" for an image page
     let root_path = rootdir.0.as_path();
     let full_path: PathBuf = root_path.join(&path);
-    println!("{:?}", full_path);
-    for stueck in path.iter() {
-        println!("ohai: {:?}", stueck);
-    }
 
     if full_path.is_dir() {
         let mut albums = HashMap::new();
@@ -139,9 +137,17 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
                 .expect("failed to render template")
         ))
     } else {
+        let file = std::fs::File::open(&full_path).ok()?;
+        let exif = Reader::new()
+            .read_from_container(&mut std::io::BufReader::new(&file)).ok()?;
+        let mut strexif = HashMap::new();
+        for f in exif.fields() {
+            strexif.insert(f.tag.to_string(), f.display_value().with_unit(&exif).to_string());
+        }
         let mut context = Context::new();
         context.insert("album", &path.parent().expect("fail dir").to_string_lossy());
         context.insert("image", &path.file_name().expect("fail name").to_string_lossy());
+        context.insert("exif", &strexif);
         Some(content::Html(
             TEMPLATES.render("image.html", &context)
                 .expect("failed to render template")

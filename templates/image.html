@@ -14,17 +14,15 @@
   </div>
   {% if exif %}
     <div class="contentpanel">
-      Shot with {{ exif['Image Model'] }} at {{ exif['EXIF DateTimeOriginal'] }}
-      {% if imgformat %}                   — <span title="Format">{{ imgformat }}</span>{% endif %}
-      {% if exif['EXIF ExposureTime'] %}   — <span title="Exposure Time">{{ exif['EXIF ExposureTime']|exifquot }}s</span>
-      {% if exif['EXIF ExposureBiasValue'] and exif['EXIF ExposureBiasValue']|exifquot != 0 %} (<span title="Exposure Bias">{{ exif['EXIF ExposureBiasValue'] }}EV)</span>{% endif %}
-      {% endif %}
-      {% if exif['EXIF ISOSpeedRatings'] %}— <span title="ISO">ISO {{ exif['EXIF ISOSpeedRatings'] }}</span>{% endif %}
-      {% if exif['EXIF FocalLength'] %}    — <span title="Focal Length">{{ exif['EXIF FocalLength']|exifquot }}mm</span>{% endif %}
-      {% if exif['EXIF FNumber'] %}        — <span title="F Number">F{{ exif['EXIF FNumber']|exifquot }}</span>{% endif %}
-      {% if exif['EXIF Flash'] %}          — <span title="Flash">{{ exif['EXIF Flash'] }}</span>{% endif %}
-      {% if exif['Image Software'] %}
-        — Revised using {{ exif['Image Software'] }}
+      Shot with {{ exif['Model'] }} at {{ exif['DateTimeOriginal'] }}
+      {% if imgformat %}              — <span title="Format">{{ imgformat }}</span>{% endif %}
+      {% if exif['ExposureTime'] %}   — <span title="Exposure Time">{{ exif['ExposureTime'] }}</span>{% endif %}
+      {% if exif['ExposureBiasValue'] %} (<span title="Exposure Bias">{{ exif['ExposureBiasValue'] }})</span>{% endif %}
+      {% if exif['ISOSpeedRatings'] %}— <span title="ISO">ISO {{ exif['ISOSpeedRatings'] }}</span>{% endif %}
+      {% if exif['FocalLength'] %}    — <span title="Focal Length">{{ exif['FocalLength'] }}</span>{% endif %}
+      {% if exif['FNumber'] %}        — <span title="F Number">{{ exif['FNumber'] }}</span>{% endif %}
+      {% if exif['Software'] != "Ver.1.01 " %}
+        — Revised using {{ exif['Software'] }}
       {% endif %}
     </div>
   {% endif %}
