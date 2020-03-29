@@ -113,7 +113,8 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
             let entry_path_abs = entry.path();
             let entry_path_rel = path.join(entry.file_name());
             if entry_path_abs.is_dir() {
-                if entry.file_name().to_string_lossy().starts_with(".") {
+                if entry.file_name().to_string_lossy().starts_with(".") ||
+                   entry.file_name().to_string_lossy().eq_ignore_ascii_case("lost+found") {
                     continue;
                 }
                 let album_imgs = std::fs::read_dir(&entry_path_abs).ok()?
