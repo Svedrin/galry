@@ -11,9 +11,9 @@ extern crate tera;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use clap::{App, Arg};
-use exif::{In, Reader, Tag};
+use exif::Reader;
 use rocket::State;
-use rocket::response::{content,NamedFile,Responder};
+use rocket::response::{content,NamedFile};
 use tera::{Context, Tera};
 use image::GenericImageView;
 
