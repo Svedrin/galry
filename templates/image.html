@@ -1,24 +1,15 @@
 {% extends "base.html" %}
-{# kate: space-indent on; indent-width 2; replace-tabs on; #}
-{% block head %}
-  {{ super() }}
-  <link href="http://svedr.in/_rss" rel="alternate"
-    type="application/rss+xml" title="Svedrin's Gallery" />
-  <link href="http://svedr.in/_rss/{{ album }}" rel="alternate"
-    type="application/rss+xml" title="Svedrin's Gallery :: {{ album|capitalize }}" />
-  <link href="http://svedr.in/_rss/{{ album }}/{{ image }}" rel="alternate"
-    type="application/rss+xml" title="Svedrin's Gallery :: {{ album|capitalize }} :: {{ image }}" />
-{% endblock %}
+
 {% block header %}
   <a href="/">&nbsp;&nbsp;/&nbsp;&nbsp;</a>
   <a href="/{{ album }}">{{ album }}</a> /
   <a href="/{{ album }}/{{ image }}">{{ image }}</a>
-  <a href="/{{ album }}/{{ image }}.html">.html</a>
-{% endblock %}
+{% endblock header %}
+
 {% block content %}
   <div class="contentpanel">
-    <div class="mainimagewrapper"><a href="/{{ album }}/{{ image }}"><img
-      src="/{{ album }}/previews/{{ image }}"
+    <div class="mainimagewrapper"><a href="/_/img/{{ album }}/{{ image }}"><img
+      src="/_/preview/{{ album }}/{{ image }}"
       alt="{{ image }}" /></a></div>
   </div>
   {% if exif %}
@@ -37,17 +28,4 @@
       {% endif %}
     </div>
   {% endif %}
-{% endblock %}
-{% block footer %}
-  {{ super() }}
-  <ul id="imagelist">
-  {% for ver in versions %}
-    {% if ver != image %}
-      <li><a href="/{{album}}/{{ ver }}.html"><img src="/{{album}}/thumbs/{{ ver }}" alt="{{ ver }}" /></a></li>
-    {% else %}
-      <li class="active"><img src="/{{album}}/thumbs/{{ ver }}" alt="{{ ver }}" /></li>
-    {% endif %}
-  {% endfor %}
-  </ul>
-  <div style="clear: both"></div>
-{% endblock %}
+{% endblock content %}

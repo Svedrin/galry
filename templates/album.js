@@ -39,7 +39,7 @@
         loading[alb] = [];
         for(var i = 0; i < albums[alb].length; i++){
           var img = new Image();
-          img.src = "/" + alb + "/thumbs/" + albums[alb][i];
+          img.src = "/_/thumb/" + alb + "/" + albums[alb][i];
           img.alb = alb;
           img.onload = imgloaded;
           loading[alb].push(img.src);

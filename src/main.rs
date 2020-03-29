@@ -7,6 +7,7 @@ extern crate clap;
 extern crate image;
 extern crate tera;
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use clap::{App, Arg};
 use rocket::State;
@@ -19,6 +20,7 @@ lazy_static! {
         let mut tera = Tera::default();
         tera.add_raw_templates(vec![
             ("base.html",  include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/base.html"))),
+            ("image.html", include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/image.html"))),
             ("index.html", include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/index.html"))),
         ]).expect("couldn't add template to Tera");
         tera
@@ -28,13 +30,17 @@ lazy_static! {
 struct RootDir(PathBuf);
 
 #[get("/_style.css")]
-fn css() -> &'static str {
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/style.css"))
+fn css() -> content::Css<&'static str> {
+    content::Css(
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/style.css"))
+    )
 }
 
 #[get("/_album.js")]
-fn js() -> &'static str {
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/album.js"))
+fn js() -> content::JavaScript<&'static str> {
+    content::JavaScript(
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/album.js"))
+    )
 }
 
 #[get("/_/<what>/<path..>", rank=1)]
@@ -88,29 +94,64 @@ fn serve_file(what: String, path: PathBuf, rootdir: State<RootDir>) -> Option<Na
 }
 
 #[get("/<path..>", rank=2)]
-fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> content::Html<String> {
+fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<String>> {
     // Path can be:
     // "" (empty) for the root dir itself
     // "herp" for a subdirectory
     // "something.jpg" for an image page
-    let full_path: PathBuf = rootdir.0.as_path().join(&path);
+    let root_path = rootdir.0.as_path();
+    let full_path: PathBuf = root_path.join(&path);
     println!("{:?}", full_path);
     for stueck in path.iter() {
         println!("ohai: {:?}", stueck);
     }
 
-    let mut context = Context::new();
-    context.insert("albums", "dunno");
-    context.insert("imagejson", "'OMFG'");
-    context.insert("images", "5");
-    content::Html(
-        TEMPLATES.render("base.html", &context)
-            .expect("failed to render template")
-    )
+    if full_path.is_dir() {
+        let mut albums = HashMap::new();
+        let mut images = Vec::new();
+
+        for entry in std::fs::read_dir(full_path).ok()? {
+            let entry = entry.ok()?;
+            let entry_path_abs = entry.path();
+            let entry_path_rel = path.join(entry.file_name());
+            if entry_path_abs.is_dir() {
+                if entry.file_name().to_string_lossy().starts_with(".") {
+                    continue;
+                }
+                let album_imgs = std::fs::read_dir(&entry_path_abs).ok()?
+                    .take(3)
+                    .map(|x| x.expect("need dirEntries").path())
+                    .filter(|p| p.is_file())
+                    .map(|p| String::from(p.file_name().expect("can't stringify").to_string_lossy()))
+                    .collect::<Vec<String>>();
+                albums.insert(String::from(entry_path_rel.to_str()?), album_imgs);
+            } else {
+                images.push(String::from(entry.file_name().to_string_lossy()));
+            }
+        }
+
+        let mut context = Context::new();
+        context.insert("this_album", &path.to_string_lossy());
+        context.insert("albums", &albums);
+        context.insert("images", &images);
+        Some(content::Html(
+            TEMPLATES.render("index.html", &context)
+                .expect("failed to render template")
+        ))
+    } else {
+        let mut context = Context::new();
+        context.insert("album", &path.parent().expect("fail dir").to_string_lossy());
+        context.insert("image", &path.file_name().expect("fail name").to_string_lossy());
+        Some(content::Html(
+            TEMPLATES.render("image.html", &context)
+                .expect("failed to render template")
+        ))
+    }
+
 }
 
 #[get("/")]
-fn index(rootdir: State<RootDir>) -> content::Html<String> {
+fn index(rootdir: State<RootDir>) -> Option<content::Html<String>> {
     serve_page(PathBuf::from(""), rootdir)
 }
 

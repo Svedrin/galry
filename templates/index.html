@@ -1,28 +1,28 @@
 {% extends "base.html" %}
 
 {% block head %}
-  <script type="text/javascript">
-    window.albums = {{ imagejson|safe }};
-  </script>
   <script type="text/javascript" src="/_album.js"></script>
-{% endblock %}
+  <script type="text/javascript">
+    window.albums = {{ albums | json_encode() | safe }};
+  </script>
+{% endblock head %}
 
 {% block header %}
   <a href="/">&nbsp;&nbsp;/&nbsp;&nbsp;</a>
-{% endblock %}
+{% endblock header %}
 
 {% block content %}
   {{ super() }}
-  <ul id="albumlist">
-  {% for album in albums %}
-    <li>{{ album|capitalize }}<br />
-      <a href="/{{ album }}">
-        <canvas id="cnv_{{ album }}" width="660" height="340" style="display: none"></canvas>
+  <ul id="albumlist" class="albumlist">
+  {% for subalb, albimgs in albums %}
+    <li>{{ subalb|capitalize }}<br />
+      <a href="/{{ subalb|safe }}">
+        <canvas id="cnv_{{ subalb|safe }}" width="660" height="340" style="display: none"></canvas>
         <noscript>
-          <ul id="imagelist">
-          {% for img in images[album] %}
+          <ul class="imagelist">
+          {% for img in albimgs %}
             <li><img
-              src="/_/thumb/{{ album }}/{{ img }}"
+              src="/_/thumb/{{ subalb|safe }}/{{ img }}"
               alt="{{ img }}" /></li>
           {% endfor %}
           </ul>
@@ -31,4 +31,12 @@
     </li>
   {% endfor %}
   </ul>
-{% endblock %}
+
+  <ul id="imagelist" class="imagelist">
+  {% for image in images %}
+    <li><a href="/{{ this_album|safe }}/{{ image }}"><img
+      src="/_/thumb/{{ this_album|safe }}/{{ image }}"
+      alt="{{ image }}" /></a></li>
+  {% endfor %}
+  </ul>
+{% endblock content %}
