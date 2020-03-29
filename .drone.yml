@@ -13,21 +13,30 @@ steps:
     - cargo +nightly check --release
     - cargo +nightly build --release
 
+---
+kind: pipeline
+name: linux-arm
+
+platform:
+  arch: arm
+  os: linux
+
+steps:
 - name: build for Armv7l
-  image: rust:slim-buster
+  image: rust:latest
   environment:
     RUSTFLAGS: -D warnings
     CC: /usr/bin/musl-gcc
   commands:
     - apt-get update
-    - apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-    - rustup target add armv7-unknown-linux-gnueabihf
+    - apt-get install -y musl-dev musl-tools
+    - rustup target add armv7-unknown-linux-musleabihf
     - rustup target list --installed
     - rustup install nightly
-    - cargo +nightly check --release --target armv7-unknown-linux-gnueabihf
-    - cargo +nightly build --release --target armv7-unknown-linux-gnueabihf
+    - cargo +nightly check --release --target armv7-unknown-linux-musleabihf
+    - cargo +nightly build --release --target armv7-unknown-linux-musleabihf
 ---
 kind: signature
-hmac: 7d518f0c7f746b0125f201df4c6ef0fdd3b005062993ec3e69bf3019a1666ce3
+hmac: 377853a485541d247d7953b51c670288557e00e5f4df20d04c7b97eec78010ae
 
 ...
