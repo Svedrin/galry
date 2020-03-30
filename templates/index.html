@@ -14,15 +14,15 @@
 {% block content %}
   {{ super() }}
   <ul id="albumlist" class="albumlist">
-  {% for subalb, albimgs in albums %}
-    <li>{{ subalb|capitalize }}<br />
-      <a href="/{{ subalb|safe }}">
-        <canvas id="cnv_{{ subalb|safe }}" width="660" height="340" style="display: none"></canvas>
+  {% for subalbum in albums %}
+    <li>{{ subalbum.0|capitalize }}<br />
+      <a href="/{{ subalbum.0|safe }}">
+        <canvas id="cnv_{{ subalbum.0|safe }}" width="660" height="340" style="display: none"></canvas>
         <noscript>
           <ul class="imagelist">
-          {% for img in albimgs %}
+          {% for img in subalbum.1 %}
             <li><img
-              src="/_/thumb/{{ subalb|safe }}/{{ img }}"
+              src="/_/thumb/{{ subalbum.0|safe }}/{{ img }}"
               alt="{{ img }}" /></li>
           {% endfor %}
           </ul>

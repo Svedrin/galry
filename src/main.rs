@@ -105,11 +105,15 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
     let full_path: PathBuf = root_path.join(&path);
 
     if full_path.is_dir() {
-        let mut albums = HashMap::new();
+        let mut albums = Vec::new();
         let mut images = Vec::new();
 
-        for entry in std::fs::read_dir(full_path).ok()? {
-            let entry = entry.ok()?;
+        let mut entries: Vec<_> = std::fs::read_dir(full_path)
+            .ok()?
+            .map(|r| r.unwrap())
+            .collect();
+        entries.sort_by_key(|dir| dir.path());
+        for entry in entries {
             let entry_path_abs = entry.path();
             let entry_path_rel = path.join(entry.file_name());
             if entry_path_abs.is_dir() {
@@ -123,7 +127,7 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
                     .filter(|p| p.is_file())
                     .map(|p| String::from(p.file_name().expect("can't stringify").to_string_lossy()))
                     .collect::<Vec<String>>();
-                albums.insert(String::from(entry_path_rel.to_str()?), album_imgs);
+                albums.push((String::from(entry_path_rel.to_str()?), album_imgs));
             } else {
                 images.push(String::from(entry.file_name().to_string_lossy()));
             }

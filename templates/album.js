@@ -1,5 +1,11 @@
   function body_onload(){
-    var albums  = window.albums;
+    // window.albums is a list of [key, value] tuples. turn to a {key: value} object.
+    var albums = window.albums.reduce(
+      function(cur, acc){
+        cur[acc[0]] = acc[1]; return cur;
+      },
+      {}
+    );
     var loading = {};
     var albimgs = {};
 
