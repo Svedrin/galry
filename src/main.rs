@@ -154,7 +154,7 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
         }
 
         // "" if not path else (path + "/")
-        context.insert("this_album", & match path.to_string_lossy().into() {
+        context.insert("this_album", & match path.to_string_lossy() {
             Cow::Borrowed("") => "".into(),
             path_str @ _ => format!("{}/", path_str)
         });
@@ -174,7 +174,7 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
         }
 
         // "" if not path else (path + "/")
-        context.insert("this_album", & match path.parent()?.to_string_lossy().into() {
+        context.insert("this_album", & match path.parent()?.to_string_lossy() {
             Cow::Borrowed("") => "".into(),
             path_str @ _ => format!("{}/", path_str)
         });
