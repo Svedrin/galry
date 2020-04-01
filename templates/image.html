@@ -10,8 +10,8 @@
 
 {% block content %}
   <div class="contentpanel">
-    <div class="mainimagewrapper"><a href="/_/img/{{ album }}{{ image }}"><img
-      src="/_/preview/{{ album }}{{ image }}"
+    <div class="mainimagewrapper"><a href="/_/img/{{ this_album|safe }}{{ image }}"><img
+      src="/_/preview/{{ this_album|safe }}{{ image }}"
       alt="{{ image }}" /></a></div>
   </div>
   {% if exif %}

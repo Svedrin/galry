@@ -8,6 +8,7 @@ extern crate exif;
 extern crate image;
 extern crate tera;
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use clap::{App, Arg};
@@ -119,6 +120,10 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
             .collect()
     };
 
+    let mut context = Context::new();
+    context.insert("crumbs", &breadcrumbs);
+    context.insert("rootdir", &root_path.file_name()?.to_string_lossy());
+
     if full_path.is_dir() {
         let mut albums = Vec::new();
         let mut images = Vec::new();
@@ -148,15 +153,11 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
             }
         }
 
-        let mut context = Context::new();
-        context.insert("rootdir", &root_path.file_name()?.to_string_lossy());
-        let path_str: String = path.to_string_lossy().into();
-        if path_str == "" {
-            context.insert("this_album", "");
-        } else {
-            context.insert("this_album", &format!("{}/", path_str));
-        }
-        context.insert("crumbs", &breadcrumbs);
+        // "" if not path else (path + "/")
+        context.insert("this_album", & match path.to_string_lossy().into() {
+            Cow::Borrowed("") => "".into(),
+            path_str @ _ => format!("{}/", path_str)
+        });
         context.insert("albums", &albums);
         context.insert("images", &images);
         Some(content::Html(
@@ -171,10 +172,12 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
         for f in exif.fields() {
             strexif.insert(f.tag.to_string(), f.display_value().with_unit(&exif).to_string());
         }
-        let mut context = Context::new();
-        context.insert("rootdir", &root_path.file_name()?.to_string_lossy());
-        context.insert("crumbs", &breadcrumbs);
-        context.insert("album", &path.parent().expect("fail dir").to_string_lossy());
+
+        // "" if not path else (path + "/")
+        context.insert("this_album", & match path.parent()?.to_string_lossy().into() {
+            Cow::Borrowed("") => "".into(),
+            path_str @ _ => format!("{}/", path_str)
+        });
         context.insert("image", &path.file_name().expect("fail name").to_string_lossy());
         context.insert("exif", &strexif);
         Some(content::Html(
