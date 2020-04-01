@@ -12,6 +12,8 @@ steps:
     - rustup install nightly
     - cargo +nightly check --release
     - cargo +nightly build --release
+    - cp -p target/release/galry target/release/galry.tmp
+    - mv -f target/release/galry.tmp target/release/galry
 
 - name: build docker image
   image: plugins/docker
@@ -20,6 +22,7 @@ steps:
     username: svedrin
     password:
       from_secret: docker-registry-pw
+    cache_from: "svedrin/galry:latest"
   when:
     event:
       exclude:
@@ -27,6 +30,6 @@ steps:
 
 ---
 kind: signature
-hmac: 4e8587f3a4607d12687ac851ca88a398fa5c89eb592cd2189beebeb058401b1b
+hmac: 54f12309bc7b3c6474a02566e05d7ac799d9944646a61b181f48f5fee3182aa2
 
 ...
