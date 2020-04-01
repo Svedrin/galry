@@ -104,18 +104,20 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
     let root_path = rootdir.0.as_path();
     let full_path: PathBuf = root_path.join(&path);
 
-    let breadcrumbs_words = path.iter()
-        .map(|p| p.to_string_lossy().into())
-        .collect::<Vec<String>>();
+    let breadcrumbs: Vec<(String, String)> = {
+        let breadcrumbs_words = path.iter()
+            .map(|p| p.to_string_lossy().into())
+            .collect::<Vec<String>>();
 
-    let mut path_so_far: PathBuf = "".into();
-    let breadcrumbs_paths = path.iter()
-        .map(|p| { path_so_far.push(p); path_so_far.to_string_lossy().into() })
-        .collect::<Vec<String>>();
+        let mut path_so_far: PathBuf = "".into();
+        let breadcrumbs_paths = path.iter()
+            .map(|p| { path_so_far.push(p); path_so_far.to_string_lossy().into() })
+            .collect::<Vec<String>>();
 
-    let breadcrumbs: Vec<(&String, &String)> = breadcrumbs_words.iter()
-        .zip(breadcrumbs_paths.iter())
-        .collect();
+        breadcrumbs_words.into_iter()
+            .zip(breadcrumbs_paths.into_iter())
+            .collect()
+    };
 
     if full_path.is_dir() {
         let mut albums = Vec::new();
