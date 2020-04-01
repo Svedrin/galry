@@ -8,7 +8,11 @@
 {% endblock head %}
 
 {% block header %}
-  <a href="/">&nbsp;&nbsp;/&nbsp;&nbsp;</a>
+  <a href="/" style="text-decoration: none">&nbsp;&nbsp;<span style="text-decoration: underline">/</span>&nbsp;&nbsp;</a>
+  {% for bread in crumbs %}
+    {% if not loop.first %}&nbsp;&nbsp;/&nbsp;&nbsp;{% endif %}
+    <a href="/{{ bread.1|safe }}">{{ bread.0 }}</a>
+  {% endfor %}
 {% endblock header %}
 
 {% block content %}
@@ -22,7 +26,7 @@
           <ul class="imagelist">
           {% for img in subalbum.1 %}
             <li><img
-              src="/_/thumb/{{ subalbum.0|safe }}/{{ img }}"
+              src="/_/thumb/{{ subalbum.0|safe }}{{ img }}"
               alt="{{ img }}" /></li>
           {% endfor %}
           </ul>
@@ -34,8 +38,8 @@
 
   <ul id="imagelist" class="imagelist">
   {% for image in images %}
-    <li><a href="/{{ this_album|safe }}/{{ image }}"><img
-      src="/_/thumb/{{ this_album|safe }}/{{ image }}"
+    <li><a href="/{{ this_album|safe }}{{ image }}"><img
+      src="/_/thumb/{{ this_album|safe }}{{ image }}"
       alt="{{ image }}" /></a></li>
   {% endfor %}
   </ul>

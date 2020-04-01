@@ -104,13 +104,26 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
     let root_path = rootdir.0.as_path();
     let full_path: PathBuf = root_path.join(&path);
 
+    let breadcrumbs_words = path.iter()
+        .map(|p| p.to_string_lossy().into())
+        .collect::<Vec<String>>();
+
+    let mut path_so_far: PathBuf = "".into();
+    let breadcrumbs_paths = path.iter()
+        .map(|p| { path_so_far.push(p); path_so_far.to_string_lossy().into() })
+        .collect::<Vec<String>>();
+
+    let breadcrumbs: Vec<(&String, &String)> = breadcrumbs_words.iter()
+        .zip(breadcrumbs_paths.iter())
+        .collect();
+
     if full_path.is_dir() {
         let mut albums = Vec::new();
         let mut images = Vec::new();
 
         let mut entries: Vec<_> = std::fs::read_dir(full_path)
             .ok()?
-            .map(|r| r.unwrap())
+            .map(|r| r.expect("need dirEntries"))
             .collect();
         entries.sort_by_key(|dir| dir.path());
         for entry in entries {
@@ -134,7 +147,13 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
         }
 
         let mut context = Context::new();
-        context.insert("this_album", &path.to_string_lossy());
+        let path_str: String = path.to_string_lossy().into();
+        if path_str == "" {
+            context.insert("this_album", "");
+        } else {
+            context.insert("this_album", &format!("{}/", path_str));
+        }
+        context.insert("crumbs", &breadcrumbs);
         context.insert("albums", &albums);
         context.insert("images", &images);
         Some(content::Html(
@@ -150,6 +169,7 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
             strexif.insert(f.tag.to_string(), f.display_value().with_unit(&exif).to_string());
         }
         let mut context = Context::new();
+        context.insert("crumbs", &breadcrumbs);
         context.insert("album", &path.parent().expect("fail dir").to_string_lossy());
         context.insert("image", &path.file_name().expect("fail name").to_string_lossy());
         context.insert("exif", &strexif);

@@ -1,15 +1,17 @@
 {% extends "base.html" %}
 
 {% block header %}
-  <a href="/">&nbsp;&nbsp;/&nbsp;&nbsp;</a>
-  <a href="/{{ album }}">{{ album }}</a> /
-  <a href="/{{ album }}/{{ image }}">{{ image }}</a>
+  <a href="/" style="text-decoration: none">&nbsp;&nbsp;<span style="text-decoration: underline">/</span>&nbsp;&nbsp;</a>
+  {% for bread in crumbs %}
+    {% if not loop.first %}&nbsp;&nbsp;/&nbsp;&nbsp;{% endif %}
+    <a href="/{{ bread.1|safe }}">{{ bread.0 }}</a>
+  {% endfor %}
 {% endblock header %}
 
 {% block content %}
   <div class="contentpanel">
-    <div class="mainimagewrapper"><a href="/_/img/{{ album }}/{{ image }}"><img
-      src="/_/preview/{{ album }}/{{ image }}"
+    <div class="mainimagewrapper"><a href="/_/img/{{ album }}{{ image }}"><img
+      src="/_/preview/{{ album }}{{ image }}"
       alt="{{ image }}" /></a></div>
   </div>
   {% if exif %}
