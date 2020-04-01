@@ -20,7 +20,6 @@ steps:
     username: svedrin
     password:
       from_secret: docker-registry-pw
-    cache_from: "svedrin/galry:latest"
   when:
     event:
       exclude:
@@ -28,6 +27,6 @@ steps:
 
 ---
 kind: signature
-hmac: 414598b54dc86429bf0a9b9b1e041f0cb504a7e074e310f7fd33b0d1138c03aa
+hmac: 4e8587f3a4607d12687ac851ca88a398fa5c89eb592cd2189beebeb058401b1b
 
 ...
