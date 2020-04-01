@@ -23,7 +23,7 @@
       {% if exif['ISOSpeedRatings'] %}— <span title="ISO">ISO {{ exif['ISOSpeedRatings'] }}</span>{% endif %}
       {% if exif['FocalLength'] %}    — <span title="Focal Length">{{ exif['FocalLength'] }}</span>{% endif %}
       {% if exif['FNumber'] %}        — <span title="F Number">{{ exif['FNumber'] }}</span>{% endif %}
-      {% if exif['Software'] != "Ver.1.01 " %}
+      {% if exif['Software'] != '"Ver.1.01 "' %}
         — Revised using {{ exif['Software'] }}
       {% endif %}
     </div>
