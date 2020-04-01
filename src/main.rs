@@ -149,6 +149,7 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
         }
 
         let mut context = Context::new();
+        context.insert("rootdir", &root_path.file_name()?.to_string_lossy());
         let path_str: String = path.to_string_lossy().into();
         if path_str == "" {
             context.insert("this_album", "");
@@ -171,6 +172,7 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
             strexif.insert(f.tag.to_string(), f.display_value().with_unit(&exif).to_string());
         }
         let mut context = Context::new();
+        context.insert("rootdir", &root_path.file_name()?.to_string_lossy());
         context.insert("crumbs", &breadcrumbs);
         context.insert("album", &path.parent().expect("fail dir").to_string_lossy());
         context.insert("image", &path.file_name().expect("fail name").to_string_lossy());
