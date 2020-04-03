@@ -11,10 +11,10 @@ extern crate tera;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use clap::{App, Arg};
 use exif::Reader;
 use rocket::State;
 use rocket::response::{content,NamedFile};
+use structopt::StructOpt;
 use tera::{Context, Tera};
 use image::GenericImageView;
 
@@ -30,7 +30,14 @@ lazy_static! {
     };
 }
 
-struct RootDir(PathBuf);
+/// Teeny-tiny Image Gallery that fits into a single executable and does not require a database.
+#[derive(StructOpt, Debug)]
+#[structopt(name = "basic")]
+struct Options {
+    /// Directory with images to serve
+    #[structopt(env="GALRY_ROOT_DIR", parse(from_os_str))]
+    root_dir: PathBuf,
+}
 
 #[get("/_style.css")]
 fn css() -> content::Css<&'static str> {
@@ -47,21 +54,23 @@ fn js() -> content::JavaScript<&'static str> {
 }
 
 #[get("/_/<what>/<path..>", rank=1)]
-fn serve_file(what: String, path: PathBuf, rootdir: State<RootDir>) -> Option<NamedFile> {
+fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Option<NamedFile> {
+    let rootdir = &opts.root_dir;
+
     // What is either preview, thumb or img
     if what != "img" && what != "thumb" && what != "preview" {
         return None;
     }
 
     // Path is the path to the image relative to the root dir
-    let img_path = rootdir.0.as_path().join(&path);
+    let img_path = rootdir.as_path().join(&path);
     if what == "img" {
         // Serve the image directly, without scaling
         return NamedFile::open(img_path).ok();
     }
 
     // Scale the image either to 1920x1080 for previews, or 350x250 for thumbnails
-    let dir_path = rootdir.0.as_path().join(&path)
+    let dir_path = rootdir.as_path().join(&path)
         .parent().expect("file has no directory!?")
         .join(".".to_owned() + &what);
 
@@ -97,12 +106,13 @@ fn serve_file(what: String, path: PathBuf, rootdir: State<RootDir>) -> Option<Na
 }
 
 #[get("/<path..>", rank=2)]
-fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<String>> {
+fn serve_page(path: PathBuf, opts: State<Options>) -> Option<content::Html<String>> {
+    let rootdir = &opts.root_dir;
     // Path can be:
     // "" (empty) for the root dir itself
     // "herp" for a subdirectory
     // "something.jpg" for an image page
-    let root_path = rootdir.0.as_path();
+    let root_path = rootdir.as_path();
     let full_path: PathBuf = root_path.join(&path);
 
     let breadcrumbs: Vec<(String, String)> = {
@@ -189,27 +199,13 @@ fn serve_page(path: PathBuf, rootdir: State<RootDir>) -> Option<content::Html<St
 }
 
 #[get("/")]
-fn index(rootdir: State<RootDir>) -> Option<content::Html<String>> {
-    serve_page(PathBuf::from(""), rootdir)
+fn index(opts: State<Options>) -> Option<content::Html<String>> {
+    serve_page(PathBuf::from(""), opts)
 }
 
 pub fn main() {
-    let matches = App::new(env!("CARGO_PKG_NAME"))
-        .version(env!("CARGO_PKG_VERSION"))
-        .author(env!("CARGO_PKG_AUTHORS"))
-        .about("single-binary image gallery")
-        .arg(Arg::with_name("directory")
-            .help("Directory with images to serve")
-            .required(true)
-            .index(1))
-        .get_matches();
-
     rocket::ignite()
-        .manage(RootDir(PathBuf::from(
-            matches
-                .value_of("directory")
-                .expect("couldn't get directory arg")
-        )))
+        .manage(Options::from_args())
         .mount("/", routes![index, serve_page, serve_file, css, js])
         .launch();
 }

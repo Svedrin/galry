@@ -4,12 +4,11 @@ version = "0.1.0"
 authors = ["Michael Ziegler <ich@michaelziegler.name>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 clap = "*"
 image = "0.23.2"
 kamadak-exif = "0.5.1"
 lazy_static = "1.0"
 rocket = "0.4.4"
+structopt = "0.3"
 tera = "1.0"
