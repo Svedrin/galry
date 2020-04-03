@@ -32,7 +32,6 @@ lazy_static! {
 
 /// Teeny-tiny Image Gallery that fits into a single executable and does not require a database.
 #[derive(StructOpt, Debug)]
-#[structopt(name = "basic")]
 struct Options {
     /// Directory with images to serve
     #[structopt(env="GALRY_ROOT_DIR", parse(from_os_str))]
