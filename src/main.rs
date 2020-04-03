@@ -37,6 +37,11 @@ struct Options {
     /// Directory with images to serve
     #[structopt(env="GALRY_ROOT_DIR", parse(from_os_str))]
     root_dir: PathBuf,
+
+    /// Set this to have the zoom button in the Image view
+    /// open the preview image rather than the original.
+    #[structopt(short, long, env="GALRY_ZOOM_SHOWS_PREVIEW")]
+    zoom_shows_preview: bool,
 }
 
 #[get("/_style.css")]
@@ -190,6 +195,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Option<content::Html<Strin
         });
         context.insert("image", &path.file_name().expect("fail name").to_string_lossy());
         context.insert("exif", &strexif);
+        context.insert("zoom_shows_preview", &opts.zoom_shows_preview);
         Some(content::Html(
             TEMPLATES.render("image.html", &context)
                 .expect("failed to render template")

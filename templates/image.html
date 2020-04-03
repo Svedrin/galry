@@ -10,9 +10,15 @@
 
 {% block content %}
   <div class="contentpanel">
-    <div class="mainimagewrapper"><a href="/_/img/{{ this_album|safe }}{{ image }}"><img
-      src="/_/preview/{{ this_album|safe }}{{ image }}"
-      alt="{{ image }}" /></a></div>
+    {% if zoom_shows_preview %}
+      <div class="mainimagewrapper"><a href="/_/preview/{{ this_album|safe }}{{ image }}"><img
+        src="/_/preview/{{ this_album|safe }}{{ image }}"
+        alt="{{ image }}" /></a></div>
+    {% else %}
+      <div class="mainimagewrapper"><a href="/_/img/{{ this_album|safe }}{{ image }}"><img
+        src="/_/preview/{{ this_album|safe }}{{ image }}"
+        alt="{{ image }}" /></a></div>
+    {% endif %}
   </div>
   {% if exif %}
     <div class="contentpanel">
