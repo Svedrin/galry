@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use exif::Reader;
 use rocket::State;
 use rocket::request::Request;
-use rocket::http::ContentType;
+use rocket::http::{ContentType, Status};
 use rocket::response::{self,content,NamedFile,Responder};
 use structopt::StructOpt;
 use tera::{Context, Tera};
@@ -51,13 +51,6 @@ enum ImageFromFileOrMem {
     ImageInMem(Vec<u8>),
 }
 
-#[derive(Debug)]
-enum ImageServError {
-    ImageError(image::ImageError),
-    BadRequest(String),
-    NotFound(String),
-}
-
 impl ImageFromFileOrMem {
     fn from_path(path: PathBuf) -> Self {
         Self::ImageFile(path)
@@ -83,6 +76,34 @@ impl<'r> Responder<'r> for ImageFromFileOrMem {
                     .header(ContentType::JPEG)
                     .sized_body(std::io::Cursor::new(img_data))
                     .ok()
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+enum ImageServError {
+    ImageError(image::ImageError),
+    BadRequest(String),
+    NotFound(String),
+}
+
+impl<'r> Responder<'r> for ImageServError {
+    fn respond_to(self, req: &Request) -> response::Result<'r> {
+        match self {
+            ImageServError::NotFound(reason) => {
+                response::status::NotFound(reason)
+                    .respond_to(req)
+            }
+            ImageServError::BadRequest(reason) => {
+                response::status::BadRequest(Some(reason))
+                    .respond_to(req)
+            }
+            ImageServError::ImageError(err) => {
+                response::status::Custom(
+                    Status::InternalServerError,
+                    format!("Image Processing Error: {:?}", err)
+                ).respond_to(req)
             }
         }
     }
