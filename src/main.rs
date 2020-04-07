@@ -48,7 +48,26 @@ struct Options {
 /// Allow the server to return an Image either from a file or from memory
 enum ImageFromFileOrMem {
     ImageFile(PathBuf),
-    ImageInMem(DynamicImage),
+    ImageInMem(Vec<u8>),
+}
+
+#[derive(Debug)]
+enum ImageServError {
+    ImageError(image::ImageError),
+    BadRequest(String),
+    NotFound(String),
+}
+
+impl ImageFromFileOrMem {
+    fn from_path(path: PathBuf) -> Self {
+        Self::ImageFile(path)
+    }
+
+    fn from_image(img: DynamicImage) -> Result<Self, image::ImageError> {
+        let mut writer = std::io::BufWriter::new(Vec::new());
+        img.write_to(&mut writer, ImageOutputFormat::Jpeg(90))?;
+        Ok(Self::ImageInMem(writer.into_inner().expect("sad panda")))
+    }
 }
 
 impl<'r> Responder<'r> for ImageFromFileOrMem {
@@ -59,14 +78,7 @@ impl<'r> Responder<'r> for ImageFromFileOrMem {
                 NamedFile::open(img_path).respond_to(req)
             }
             // If it's from Mem, serialize it as JPG into a Vec and serve that
-            ImageFromFileOrMem::ImageInMem(dyn_image) => {
-                let img_data = {
-                    let mut writer = std::io::BufWriter::new(Vec::new());
-                    dyn_image.write_to(&mut writer, ImageOutputFormat::Jpeg(90))
-                        .expect("cannot convert to jpg");
-                    writer.into_inner()
-                        .expect("sad panda")
-                };
+            ImageFromFileOrMem::ImageInMem(img_data) => {
                 response::Response::build()
                     .header(ContentType::JPEG)
                     .sized_body(std::io::Cursor::new(img_data))
@@ -91,66 +103,87 @@ fn js() -> content::JavaScript<&'static str> {
 }
 
 #[get("/_/<what>/<path..>", rank=1)]
-fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Option<ImageFromFileOrMem> {
+fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<ImageFromFileOrMem, ImageServError> {
     let rootdir = &opts.root_dir;
 
     // What is either preview, thumb or img
     if what != "img" && what != "thumb" && what != "preview" {
-        return None;
+        return Err(ImageServError::BadRequest("can only serve img, thumb or preview".to_owned()));
     }
 
     // Path is the path to the image relative to the root dir
     let img_path = rootdir.as_path().join(&path);
+
+    if !img_path.exists() {
+        return Err(ImageServError::NotFound("image does not exist".to_owned()));
+    }
+
     if what == "img" {
         // Serve the image directly, without scaling
-        return Some(ImageFromFileOrMem::ImageFile(img_path));
+        return Ok(ImageFromFileOrMem::from_path(img_path));
     }
 
-    // Scale the image either to 1920x1080 for previews, or 350x250 for thumbnails
-    let dir_path = rootdir.as_path().join(&path)
-        .parent().expect("file has no directory!?")
-        .join(".".to_owned() + &what);
-
-    let scaled_path = dir_path
-        .join(path.file_name().expect("file without file name!?"));
-
-    if !scaled_path.exists() {
-        let img = image::open(&img_path).ok()?;
-        let (width, height) =
-            if what == "thumb" {
-                ( 350,  250)
-            } else {
-                (1920, 1080)
-            };
-
-        if img.width() <= width && img.height() <= height {
-            return Some(ImageFromFileOrMem::ImageFile(img_path));
-        }
-
-        let thumbnail = img.thumbnail(width, height);
-
-        // Make sure the .preview or .thumb directory exists.
-        // If we cannot create it, return the image from memory.
+    // If path is a/b/c/d.jpg,         we'll place the thumbs/previews in
+    //            a/b/c/.<what>/d.jpg
+    // This is completely optional - if we can't do this for _any_ reason at all, we
+    // just shrink the image in-memory and return the image data without saving it.
+    // Thus the code is structured such that it tries to build the path we're going
+    // to use, and along the way, makes sure that everything exists / is accessible.
+    // If it hits any roadblocks, it just returns None. (Separate fn so ? does this.)
+    fn get_scaled_img_path(rootdir: &PathBuf, path: &PathBuf, what: &String) -> Option<PathBuf> {
+        // a/b/c/d.jpg -> a/b/c/.<what>
+        let dir_path = rootdir.as_path()
+            .join(path)
+            .parent()?
+            .join(".".to_owned() + what);
+        // Make sure it exists - return None if we can't
         if !dir_path.exists() {
-            if dir_path.parent()?.metadata().ok()?.permissions().readonly() {
-                return Some(ImageFromFileOrMem::ImageInMem(thumbnail));
-            }
             std::fs::create_dir(&dir_path).ok()?;
         }
-
-        // Make sure we have write permission on the .preview and .thumb dirs.
-        // If we do not, return the image from memory.
+        // Make sure we're allowed to write to it
         if dir_path.metadata().ok()?.permissions().readonly() {
-            return Some(ImageFromFileOrMem::ImageInMem(thumbnail));
+            return None;
         }
-
-        // Save the image to disk and return it from file.
-        thumbnail
-            .save(&scaled_path)
-            .ok()?;
+        // a/b/c/.<what> -> a/b/c/.<what>/d.jpg
+        Some(dir_path.join(path.file_name()?))
     }
 
-    Some(ImageFromFileOrMem::ImageFile(scaled_path))
+    let scaled_path = get_scaled_img_path(&rootdir, &path, &what);
+
+    // Do we have that already as a file? If so, then return the file
+    if scaled_path.is_some() && scaled_path.as_ref().unwrap().exists() {
+        return Ok(ImageFromFileOrMem::from_path(scaled_path.unwrap()));
+    }
+
+    // We don't have a file, so we need to scale the source image down
+    let img = image::open(&img_path)
+        .map_err(ImageServError::ImageError)?;
+
+    // Scale the image either to 1920x1080 for previews, or 350x250 for thumbnails.
+    let (width, height) =
+        if what == "thumb" {
+            ( 350,  250)
+        } else {
+            (1920, 1080)
+        };
+
+    // If the original image is smaller than the "thumbnail" we're intending
+    // to create, let's just be lazy and return the original
+    if img.width() <= width && img.height() <= height {
+        return Ok(ImageFromFileOrMem::from_path(img_path));
+    }
+
+    // Convert the image
+    let thumbnail = img.thumbnail(width, height);
+
+    // If we have a path, try to save the image. If that fails, no biggie
+    if let Some(scaled_path) = scaled_path {
+        let _ = thumbnail
+            .save(&scaled_path);
+    }
+
+    ImageFromFileOrMem::from_image(thumbnail)
+        .map_err(ImageServError::ImageError)
 }
 
 #[get("/<path..>", rank=2)]
