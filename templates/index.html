@@ -21,6 +21,9 @@
   {% for subalbum in albums %}
     <li>{{ subalbum.0|capitalize }}<br />
       <a href="/{{ subalbum.0|safe }}">
+        <div    id="div_{{ subalbum.0|safe }}" style="width: 660px; height: 340px; display: none; justify-content: center; align-items: center;">
+          <div class="loader"></div>
+        </div>
         <canvas id="cnv_{{ subalbum.0|safe }}" width="660" height="340" style="display: none"></canvas>
         <noscript>
           <ul class="imagelist">

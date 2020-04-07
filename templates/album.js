@@ -14,6 +14,8 @@
         loading[this.alb].pop(this.src);
       }
       else{
+        var div = document.getElementById('div_' + this.alb);
+        div.style.display = "none";
         var cnv = document.getElementById('cnv_' + this.alb);
         cnv.style.display = "block";
         var ctx = cnv.getContext('2d');
@@ -41,6 +43,8 @@
 
     for(var alb in albums){
       if(albums.hasOwnProperty(alb)){
+        var cnv = document.getElementById('div_' + alb);
+        cnv.style.display = "flex";
         albimgs[alb] = [];
         loading[alb] = [];
         for(var i = 0; i < albums[alb].length; i++){
