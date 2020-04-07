@@ -13,10 +13,12 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use exif::Reader;
 use rocket::State;
-use rocket::response::{content,NamedFile};
+use rocket::request::Request;
+use rocket::http::ContentType;
+use rocket::response::{self,content,NamedFile,Responder};
 use structopt::StructOpt;
 use tera::{Context, Tera};
-use image::GenericImageView;
+use image::{GenericImageView, DynamicImage, ImageOutputFormat};
 
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
@@ -43,6 +45,35 @@ struct Options {
     zoom_shows_preview: bool,
 }
 
+/// Allow the server to return an Image either from a file or from memory
+enum ImageFromFileOrMem {
+    ImageFile(NamedFile),
+    ImageInMem(DynamicImage),
+}
+
+impl<'r> Responder<'r> for ImageFromFileOrMem {
+    fn respond_to(self, req: &Request) -> response::Result<'r> {
+        match self {
+            // If it's a file, defer to its Responder impl
+            ImageFromFileOrMem::ImageFile(named_file) => named_file.respond_to(req),
+            // If it's from Mem, serialize it as JPG into a Vec and serve that
+            ImageFromFileOrMem::ImageInMem(dyn_image) => {
+                let img_data = {
+                    let mut writer = std::io::BufWriter::new(Vec::new());
+                    dyn_image.write_to(&mut writer, ImageOutputFormat::Jpeg(90))
+                        .expect("cannot convert to jpg");
+                    writer.into_inner()
+                        .expect("sad panda")
+                };
+                response::Response::build()
+                    .header(ContentType::JPEG)
+                    .sized_body(std::io::Cursor::new(img_data))
+                    .ok()
+            }
+        }
+    }
+}
+
 #[get("/_style.css")]
 fn css() -> content::Css<&'static str> {
     content::Css(
@@ -58,7 +89,7 @@ fn js() -> content::JavaScript<&'static str> {
 }
 
 #[get("/_/<what>/<path..>", rank=1)]
-fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Option<NamedFile> {
+fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Option<ImageFromFileOrMem> {
     let rootdir = &opts.root_dir;
 
     // What is either preview, thumb or img
@@ -70,7 +101,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Option<Named
     let img_path = rootdir.as_path().join(&path);
     if what == "img" {
         // Serve the image directly, without scaling
-        return NamedFile::open(img_path).ok();
+        return Some(ImageFromFileOrMem::ImageFile(NamedFile::open(img_path).ok()?));
     }
 
     // Scale the image either to 1920x1080 for previews, or 350x250 for thumbnails
@@ -89,24 +120,35 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Option<Named
             } else {
                 (1920, 1080)
             };
+
         if img.width() <= width && img.height() <= height {
-            return NamedFile::open(img_path).ok();
+            return Some(ImageFromFileOrMem::ImageFile(NamedFile::open(img_path).ok()?));
         }
 
-        // Make sure the output directory exists
-        // TODO: if readonly, do not write it to a file but instead return it directly
-        // This will require some refactoring so that this function can return
-        // DynamicImage instances _as well as_ NamedFiles
-        if !dir_path.exists() && !dir_path.parent()?.metadata().ok()?.permissions().readonly() {
+        let thumbnail = img.thumbnail(width, height);
+
+        // Make sure the .preview or .thumb directory exists.
+        // If we cannot create it, return the image from memory.
+        if !dir_path.exists() {
+            if dir_path.parent()?.metadata().ok()?.permissions().readonly() {
+                return Some(ImageFromFileOrMem::ImageInMem(thumbnail));
+            }
             std::fs::create_dir(&dir_path).ok()?;
         }
 
-        img.thumbnail(width, height)
+        // Make sure we have write permission on the .preview and .thumb dirs.
+        // If we do not, return the image from memory.
+        if dir_path.metadata().ok()?.permissions().readonly() {
+            return Some(ImageFromFileOrMem::ImageInMem(thumbnail));
+        }
+
+        // Save the image to disk and return it from file.
+        thumbnail
             .save(&scaled_path)
             .ok()?;
     }
 
-    NamedFile::open(scaled_path).ok()
+    Some(ImageFromFileOrMem::ImageFile(NamedFile::open(scaled_path).ok()?))
 }
 
 #[get("/<path..>", rank=2)]
