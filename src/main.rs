@@ -18,7 +18,7 @@ use rocket::http::{ContentType, Status};
 use rocket::response::{self,content,NamedFile,Responder};
 use structopt::StructOpt;
 use tera::{Context, Tera};
-use image::{GenericImageView, DynamicImage, ImageOutputFormat};
+use image::{GenericImageView, DynamicImage, ImageOutputFormat, ImageError};
 
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
@@ -109,6 +109,12 @@ impl<'r> Responder<'r> for ImageServError {
     }
 }
 
+impl From<image::ImageError> for ImageServError {
+    fn from(err: ImageError) -> Self {
+        Self::ImageError(err)
+    }
+}
+
 #[get("/_style.css")]
 fn css() -> content::Css<&'static str> {
     content::Css(
@@ -177,8 +183,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
     }
 
     // We don't have a file, so we need to scale the source image down
-    let img = image::open(&img_path)
-        .map_err(ImageServError::ImageError)?;
+    let img = image::open(&img_path)?;
 
     // Scale the image either to 1920x1080 for previews, or 350x250 for thumbnails.
     let (width, height) =
@@ -203,8 +208,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
             .save(&scaled_path);
     }
 
-    ImageFromFileOrMem::from_image(thumbnail)
-        .map_err(ImageServError::ImageError)
+    Ok(ImageFromFileOrMem::from_image(thumbnail)?)
 }
 
 #[get("/<path..>", rank=2)]
