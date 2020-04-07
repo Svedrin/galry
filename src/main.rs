@@ -47,15 +47,17 @@ struct Options {
 
 /// Allow the server to return an Image either from a file or from memory
 enum ImageFromFileOrMem {
-    ImageFile(NamedFile),
+    ImageFile(PathBuf),
     ImageInMem(DynamicImage),
 }
 
 impl<'r> Responder<'r> for ImageFromFileOrMem {
     fn respond_to(self, req: &Request) -> response::Result<'r> {
         match self {
-            // If it's a file, defer to its Responder impl
-            ImageFromFileOrMem::ImageFile(named_file) => named_file.respond_to(req),
+            // If it's a file, reuse NamedFile's Responder impl
+            ImageFromFileOrMem::ImageFile(img_path) => {
+                NamedFile::open(img_path).respond_to(req)
+            }
             // If it's from Mem, serialize it as JPG into a Vec and serve that
             ImageFromFileOrMem::ImageInMem(dyn_image) => {
                 let img_data = {
@@ -101,7 +103,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Option<Image
     let img_path = rootdir.as_path().join(&path);
     if what == "img" {
         // Serve the image directly, without scaling
-        return Some(ImageFromFileOrMem::ImageFile(NamedFile::open(img_path).ok()?));
+        return Some(ImageFromFileOrMem::ImageFile(img_path));
     }
 
     // Scale the image either to 1920x1080 for previews, or 350x250 for thumbnails
@@ -122,7 +124,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Option<Image
             };
 
         if img.width() <= width && img.height() <= height {
-            return Some(ImageFromFileOrMem::ImageFile(NamedFile::open(img_path).ok()?));
+            return Some(ImageFromFileOrMem::ImageFile(img_path));
         }
 
         let thumbnail = img.thumbnail(width, height);
@@ -148,7 +150,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Option<Image
             .ok()?;
     }
 
-    Some(ImageFromFileOrMem::ImageFile(NamedFile::open(scaled_path).ok()?))
+    Some(ImageFromFileOrMem::ImageFile(scaled_path))
 }
 
 #[get("/<path..>", rank=2)]
