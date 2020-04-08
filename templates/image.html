@@ -33,5 +33,7 @@
         — Revised using {{ exif['Software'] }}
       {% endif %}
     </div>
+  {% else %}
+    <div class="contentpanel">EXIF information is unavailable</div>
   {% endif %}
 {% endblock content %}

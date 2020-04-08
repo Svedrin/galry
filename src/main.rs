@@ -10,6 +10,7 @@ extern crate tera;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::io;
 use std::path::PathBuf;
 use exif::Reader;
 use rocket::State;
@@ -84,6 +85,7 @@ impl<'r> Responder<'r> for ImageFromFileOrMem {
 #[derive(Debug)]
 enum ImageServError {
     ImageError(image::ImageError),
+    IoError(io::Error),
     BadRequest(String),
     NotFound(String),
 }
@@ -102,7 +104,13 @@ impl<'r> Responder<'r> for ImageServError {
             ImageServError::ImageError(err) => {
                 response::status::Custom(
                     Status::InternalServerError,
-                    format!("Image Processing Error: {:?}", err)
+                    format!("Image Processing Error: {:#?}", err)
+                ).respond_to(req)
+            }
+            ImageServError::IoError(err) => {
+                response::status::Custom(
+                    Status::InternalServerError,
+                    format!("IO Error: {:#?}", err)
                 ).respond_to(req)
             }
         }
@@ -112,6 +120,12 @@ impl<'r> Responder<'r> for ImageServError {
 impl From<image::ImageError> for ImageServError {
     fn from(err: ImageError) -> Self {
         Self::ImageError(err)
+    }
+}
+
+impl From<io::Error> for ImageServError {
+    fn from(err: io::Error) -> Self {
+        Self::IoError(err)
     }
 }
 
@@ -135,14 +149,14 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
 
     // What is either preview, thumb or img
     if what != "img" && what != "thumb" && what != "preview" {
-        return Err(ImageServError::BadRequest("can only serve img, thumb or preview".to_owned()));
+        return Err(ImageServError::BadRequest("can only serve img, thumb or preview".into()));
     }
 
     // Path is the path to the image relative to the root dir
     let img_path = rootdir.as_path().join(&path);
 
     if !img_path.exists() {
-        return Err(ImageServError::NotFound("image does not exist".to_owned()));
+        return Err(ImageServError::NotFound("image does not exist".into()));
     }
 
     if what == "img" {
@@ -212,7 +226,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
 }
 
 #[get("/<path..>", rank=2)]
-fn serve_page(path: PathBuf, opts: State<Options>) -> Option<content::Html<String>> {
+fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<String>, ImageServError> {
     let rootdir = &opts.root_dir;
     // Path can be:
     // "" (empty) for the root dir itself
@@ -220,6 +234,10 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Option<content::Html<Strin
     // "something.jpg" for an image page
     let root_path = rootdir.as_path();
     let full_path: PathBuf = root_path.join(&path);
+
+    if !full_path.exists() {
+        return Err(ImageServError::NotFound(format!("path '{:#?}' does not exist", full_path)));
+    }
 
     let breadcrumbs: Vec<(String, String)> = {
         let breadcrumbs_words = path.iter()
@@ -238,32 +256,42 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Option<content::Html<Strin
 
     let mut context = Context::new();
     context.insert("crumbs", &breadcrumbs);
-    context.insert("rootdir", &root_path.file_name()?.to_string_lossy());
+    context.insert(
+        "rootdir",
+        &root_path.file_name()
+            .and_then(|rp| Some(rp.to_string_lossy()))
+            .unwrap_or("/".into())
+    );
 
     if full_path.is_dir() {
         let mut albums = Vec::new();
         let mut images = Vec::new();
 
-        let mut entries: Vec<_> = std::fs::read_dir(full_path)
-            .ok()?
-            .map(|r| r.expect("need dirEntries"))
+        let mut entries: Vec<_> = std::fs::read_dir(full_path)?
+            .filter(|r| r.is_ok())
+            .map(|r| r.unwrap())
             .collect();
         entries.sort_by_key(|dir| dir.path());
         for entry in entries {
+            if entry.file_name().to_string_lossy().starts_with(".") ||
+                entry.file_name().to_string_lossy().eq_ignore_ascii_case("lost+found") {
+                continue;
+            }
             let entry_path_abs = entry.path();
             let entry_path_rel = path.join(entry.file_name());
             if entry_path_abs.is_dir() {
-                if entry.file_name().to_string_lossy().starts_with(".") ||
-                   entry.file_name().to_string_lossy().eq_ignore_ascii_case("lost+found") {
-                    continue;
-                }
-                let album_imgs = std::fs::read_dir(&entry_path_abs).ok()?
-                    .take(3)
-                    .map(|x| x.expect("need dirEntries").path())
-                    .filter(|p| p.is_file())
-                    .map(|p| String::from(p.file_name().expect("can't stringify").to_string_lossy()))
-                    .collect::<Vec<String>>();
-                albums.push((String::from(entry_path_rel.to_str()?), album_imgs));
+                let album_imgs = std::fs::read_dir(&entry_path_abs)
+                    .and_then(|rd| {
+                        Ok(rd
+                            .filter(|entres| entres.is_ok())
+                            .map(|entres| entres.unwrap())
+                            .filter(|ent| ent.path().is_file())
+                            .take(3)
+                            .map(|ent| ent.file_name().to_string_lossy().into())
+                            .collect::<Vec<String>>())
+                    })
+                    .unwrap_or(vec![]);
+                albums.push((String::from(entry_path_rel.to_string_lossy()), album_imgs));
             } else {
                 images.push(String::from(entry.file_name().to_string_lossy()));
             }
@@ -276,37 +304,52 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Option<content::Html<Strin
         });
         context.insert("albums", &albums);
         context.insert("images", &images);
-        Some(content::Html(
+        Ok(content::Html(
             TEMPLATES.render("index.html", &context)
                 .expect("failed to render template")
         ))
-    } else {
-        let file = std::fs::File::open(&full_path).ok()?;
-        let exif = Reader::new()
-            .read_from_container(&mut std::io::BufReader::new(&file)).ok()?;
-        let mut strexif = HashMap::new();
-        for f in exif.fields() {
-            strexif.insert(f.tag.to_string(), f.display_value().with_unit(&exif).to_string());
-        }
+    }
+    else if full_path.is_file() {
+        // Try to read EXIF data. This is optional, and if it fails for any reason, we just
+        // serve the image without it.
+        let exif = std::fs::File::open(&full_path).ok()
+            .and_then(|file| {
+                Reader::new()
+                    .read_from_container(&mut std::io::BufReader::new(&file)).ok()
+            })
+            .and_then(|exif| {
+                Some(exif.fields()
+                    .map(|field| (
+                        field.tag.to_string(),
+                        field.display_value().with_unit(&exif).to_string()
+                    ))
+                    .into_iter()
+                    .collect::<HashMap<String, String>>())
+            });
 
         // "" if not path else (path + "/")
-        context.insert("this_album", & match path.parent()?.to_string_lossy() {
+        let parent = path.parent()
+            .and_then(|p| p.to_string_lossy().into())
+            .unwrap_or("".into());
+        context.insert("this_album", & match parent {
             Cow::Borrowed("") => "".into(),
             path_str @ _ => format!("{}/", path_str)
         });
         context.insert("image", &path.file_name().expect("fail name").to_string_lossy());
-        context.insert("exif", &strexif);
+        context.insert("exif", &exif);
         context.insert("zoom_shows_preview", &opts.zoom_shows_preview);
-        Some(content::Html(
+        Ok(content::Html(
             TEMPLATES.render("image.html", &context)
                 .expect("failed to render template")
         ))
     }
-
+    else {
+        Err(ImageServError::NotFound(format!("path '{:#?}' is neither a file nor a directory", full_path)))
+    }
 }
 
 #[get("/")]
-fn index(opts: State<Options>) -> Option<content::Html<String>> {
+fn index(opts: State<Options>) -> Result<content::Html<String>, ImageServError> {
     serve_page(PathBuf::from(""), opts)
 }
 
