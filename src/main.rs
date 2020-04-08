@@ -83,31 +83,31 @@ impl<'r> Responder<'r> for ImageFromFileOrMem {
 }
 
 #[derive(Debug)]
-enum ImageServError {
+enum GalryError {
     ImageError(image::ImageError),
     IoError(io::Error),
     BadRequest(String),
     NotFound(String),
 }
 
-impl<'r> Responder<'r> for ImageServError {
+impl<'r> Responder<'r> for GalryError {
     fn respond_to(self, req: &Request) -> response::Result<'r> {
         match self {
-            ImageServError::NotFound(reason) => {
+            GalryError::NotFound(reason) => {
                 response::status::NotFound(reason)
                     .respond_to(req)
             }
-            ImageServError::BadRequest(reason) => {
+            GalryError::BadRequest(reason) => {
                 response::status::BadRequest(Some(reason))
                     .respond_to(req)
             }
-            ImageServError::ImageError(err) => {
+            GalryError::ImageError(err) => {
                 response::status::Custom(
                     Status::InternalServerError,
                     format!("Image Processing Error: {:#?}", err)
                 ).respond_to(req)
             }
-            ImageServError::IoError(err) => {
+            GalryError::IoError(err) => {
                 response::status::Custom(
                     Status::InternalServerError,
                     format!("IO Error: {:#?}", err)
@@ -117,13 +117,13 @@ impl<'r> Responder<'r> for ImageServError {
     }
 }
 
-impl From<image::ImageError> for ImageServError {
+impl From<image::ImageError> for GalryError {
     fn from(err: ImageError) -> Self {
         Self::ImageError(err)
     }
 }
 
-impl From<io::Error> for ImageServError {
+impl From<io::Error> for GalryError {
     fn from(err: io::Error) -> Self {
         Self::IoError(err)
     }
@@ -144,19 +144,19 @@ fn js() -> content::JavaScript<&'static str> {
 }
 
 #[get("/_/<what>/<path..>", rank=1)]
-fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<ImageFromFileOrMem, ImageServError> {
+fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<ImageFromFileOrMem, GalryError> {
     let rootdir = &opts.root_dir;
 
     // What is either preview, thumb or img
     if what != "img" && what != "thumb" && what != "preview" {
-        return Err(ImageServError::BadRequest("can only serve img, thumb or preview".into()));
+        return Err(GalryError::BadRequest("can only serve img, thumb or preview".into()));
     }
 
     // Path is the path to the image relative to the root dir
     let img_path = rootdir.as_path().join(&path);
 
     if !img_path.exists() {
-        return Err(ImageServError::NotFound("image does not exist".into()));
+        return Err(GalryError::NotFound("image does not exist".into()));
     }
 
     if what == "img" {
@@ -226,7 +226,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
 }
 
 #[get("/<path..>", rank=2)]
-fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<String>, ImageServError> {
+fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<String>, GalryError> {
     let rootdir = &opts.root_dir;
     // Path can be:
     // "" (empty) for the root dir itself
@@ -236,7 +236,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
     let full_path: PathBuf = root_path.join(&path);
 
     if !full_path.exists() {
-        return Err(ImageServError::NotFound(format!("path '{:#?}' does not exist", full_path)));
+        return Err(GalryError::NotFound(format!("path '{:#?}' does not exist", full_path)));
     }
 
     let breadcrumbs: Vec<(String, String)> = {
@@ -344,12 +344,12 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
         ))
     }
     else {
-        Err(ImageServError::NotFound(format!("path '{:#?}' is neither a file nor a directory", full_path)))
+        Err(GalryError::NotFound(format!("path '{:#?}' is neither a file nor a directory", full_path)))
     }
 }
 
 #[get("/")]
-fn index(opts: State<Options>) -> Result<content::Html<String>, ImageServError> {
+fn index(opts: State<Options>) -> Result<content::Html<String>, GalryError> {
     serve_page(PathBuf::from(""), opts)
 }
 
