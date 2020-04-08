@@ -44,6 +44,11 @@ struct Options {
     /// open the preview image rather than the original.
     #[structopt(short, long, env="GALRY_ZOOM_SHOWS_PREVIEW")]
     zoom_shows_preview: bool,
+
+    /// Treat the file system as read-only and never write
+    /// thumbnails or previews to disk.
+    #[structopt(short, long, env="GALRY_READ_ONLY_FS")]
+    read_only_fs: bool,
 }
 
 /// Allow the server to return an Image either from a file or from memory
@@ -189,7 +194,12 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
         Some(dir_path.join(path.file_name()?))
     }
 
-    let scaled_path = get_scaled_img_path(&rootdir, &path, &what);
+    let scaled_path =
+        if !opts.read_only_fs {
+            get_scaled_img_path(&rootdir, &path, &what)
+        } else {
+            None
+        };
 
     // Do we have that already as a file? If so, then return the file
     if scaled_path.is_some() && scaled_path.as_ref().unwrap().exists() {
