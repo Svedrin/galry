@@ -8,7 +8,6 @@ extern crate exif;
 extern crate image;
 extern crate tera;
 
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
@@ -150,24 +149,22 @@ fn js() -> content::JavaScript<&'static str> {
 }
 
 fn make_url_for(args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value> {
-    Ok(PathBuf::from("/")
-        .join(
-            args.get("prefix")
-                .and_then(|arg| tera::from_value::<String>(arg.to_owned()).ok())
-                .unwrap_or(String::from(""))
-        )
-        .join(
-            args.get("album")
-                .and_then(|arg| tera::from_value::<String>(arg.to_owned()).ok())
-                .unwrap_or(String::from(""))
-        )
-        .join(
-            args.get("image")
-                .and_then(|arg| tera::from_value::<String>(arg.to_owned()).ok())
-                .unwrap_or(String::from(""))
-        )
-        .to_string_lossy()
-        .into()
+    Ok(
+        ["prefix", "album", "image"].iter()
+            // for each of these ^, retrieve the value from `args`
+            .map( |param| {
+                args.get(*param)
+                    .and_then(|arg| tera::from_value::<String>(arg.to_owned()).ok())
+                    .unwrap_or(String::from(""))
+            })
+            // reduce them by joining into a single PathBuf
+            .fold(
+                PathBuf::from("/"),
+                |acc, cur| acc.join(cur)
+            )
+            // PathBuf -> String -> tera::Value
+            .to_string_lossy()
+            .into()
     )
 }
 
