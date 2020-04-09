@@ -21,7 +21,7 @@
   {% for subalbum in albums %}
     {% if subalbum.1 %}
       <li>{{ subalbum.0|capitalize }}<br />
-        <a href="/{{ subalbum.0|safe }}">
+        <a href="{{ url_for(album=subalbum.0)|safe }}">
           <div    id="div_{{ subalbum.0|safe }}" style="width: 660px; height: 340px; display: none; justify-content: center; align-items: center;">
             <div class="loader"></div>
           </div>
@@ -30,7 +30,7 @@
             <ul class="imagelist">
             {% for img in subalbum.1 %}
               <li><img
-                src="/_/thumb/{{ subalbum.0|safe }}{{ img }}"
+                src="{{ url_for(prefix='_/thumb', album=subalbum.0, image=img)|safe }}"
                 alt="{{ img }}" /></li>
             {% endfor %}
             </ul>
@@ -43,8 +43,8 @@
 
   <ul id="imagelist" class="imagelist">
   {% for image in images %}
-    <li><a href="/{{ this_album|safe }}{{ image }}"><img
-      src="/_/thumb/{{ this_album|safe }}{{ image }}"
+    <li><a href="{{ url_for(album=this_album, image=image)|safe }}"><img
+      src="{{ url_for(prefix='_/thumb', album=this_album, image=image)|safe }}"
       alt="{{ image }}" /></a></li>
   {% endfor %}
   </ul>

@@ -29,6 +29,7 @@ lazy_static! {
             ("image.html", include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/image.html"))),
             ("index.html", include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/index.html"))),
         ]).expect("couldn't add template to Tera");
+        tera.register_function("url_for", make_url_for);
         tera
     };
 }
@@ -145,6 +146,28 @@ fn css() -> content::Css<&'static str> {
 fn js() -> content::JavaScript<&'static str> {
     content::JavaScript(
         include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/album.js"))
+    )
+}
+
+fn make_url_for(args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value> {
+    Ok(PathBuf::from("/")
+        .join(
+            args.get("prefix")
+                .and_then(|arg| tera::from_value::<String>(arg.to_owned()).ok())
+                .unwrap_or(String::from(""))
+        )
+        .join(
+            args.get("album")
+                .and_then(|arg| tera::from_value::<String>(arg.to_owned()).ok())
+                .unwrap_or(String::from(""))
+        )
+        .join(
+            args.get("image")
+                .and_then(|arg| tera::from_value::<String>(arg.to_owned()).ok())
+                .unwrap_or(String::from(""))
+        )
+        .to_string_lossy()
+        .into()
     )
 }
 
@@ -307,11 +330,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
             }
         }
 
-        // "" if not path else (path + "/")
-        context.insert("this_album", & match path.to_string_lossy() {
-            Cow::Borrowed("") => "".into(),
-            path_str @ _ => format!("{}/", path_str)
-        });
+        context.insert("this_album", &path.to_string_lossy());
         context.insert("albums", &albums);
         context.insert("images", &images);
         Ok(content::Html(
@@ -341,10 +360,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
         let parent = path.parent()
             .and_then(|p| p.to_string_lossy().into())
             .unwrap_or("".into());
-        context.insert("this_album", & match parent {
-            Cow::Borrowed("") => "".into(),
-            path_str @ _ => format!("{}/", path_str)
-        });
+        context.insert("this_album", &parent);
         context.insert("image", &path.file_name().expect("fail name").to_string_lossy());
         context.insert("exif", &exif);
         context.insert("zoom_shows_preview", &opts.zoom_shows_preview);

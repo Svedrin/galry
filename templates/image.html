@@ -11,12 +11,12 @@
 {% block content %}
   <div class="contentpanel">
     {% if zoom_shows_preview %}
-      <div class="mainimagewrapper"><a href="/_/preview/{{ this_album|safe }}{{ image }}"><img
-        src="/_/preview/{{ this_album|safe }}{{ image }}"
+      <div class="mainimagewrapper"><a href="{{ url_for(prefix='_/preview', album=this_album, image=image)|safe }}"><img
+        src="{{ url_for(prefix='_/preview', album=this_album, image=image)|safe }}"
         alt="{{ image }}" /></a></div>
     {% else %}
-      <div class="mainimagewrapper"><a href="/_/img/{{ this_album|safe }}{{ image }}"><img
-        src="/_/preview/{{ this_album|safe }}{{ image }}"
+      <div class="mainimagewrapper"><a href="{{ url_for(prefix='_/img', album=this_album, image=image)|safe }}"><img
+        src="{{ url_for(prefix='_/preview', album=this_album, image=image)|safe }}"
         alt="{{ image }}" /></a></div>
     {% endif %}
   </div>
