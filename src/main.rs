@@ -150,10 +150,10 @@ fn js() -> content::JavaScript<&'static str> {
 
 fn make_url_for(args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value> {
     Ok(
-        ["prefix", "album", "image"].iter()
+        vec!["prefix", "album", "image"].into_iter()
             // for each of these ^, retrieve the value from `args`
             .map( |param| {
-                args.get(*param)
+                args.get(param)
                     .and_then(|arg| tera::from_value::<String>(arg.to_owned()).ok())
                     .unwrap_or(String::from(""))
             })
