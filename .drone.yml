@@ -1,6 +1,10 @@
 ---
 kind: pipeline
-name: default
+name: linux-amd64
+
+platform:
+  os: linux
+  arch: amd64
 
 steps:
 - name: build for Linux
@@ -29,7 +33,40 @@ steps:
       - pull_request
 
 ---
+kind: pipeline
+name: linux-arm
+
+platform:
+  os: linux
+  arch: arm
+
+steps:
+- name: build for Linux
+  image: rust:latest
+  environment:
+    RUSTFLAGS: -D warnings
+  commands:
+    - rustup install nightly
+    - cargo +nightly check --release
+    - cargo +nightly build --release
+    - cp -p target/release/galry target/release/galry.tmp
+    - mv -f target/release/galry.tmp target/release/galry
+
+- name: build docker image
+  image: plugins/docker
+  settings:
+    repo: svedrin/galry
+    username: svedrin
+    password:
+      from_secret: docker-registry-pw
+    cache_from: "svedrin/galry:latest-armv7l"
+  when:
+    event:
+      exclude:
+      - pull_request
+
+---
 kind: signature
-hmac: 54f12309bc7b3c6474a02566e05d7ac799d9944646a61b181f48f5fee3182aa2
+hmac: 8e6fbd6bbe02667c505fe3aab3c68313d09b7830d225dd6819d545755b493db8
 
 ...
