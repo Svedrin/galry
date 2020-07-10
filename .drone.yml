@@ -47,7 +47,6 @@ steps:
     RUSTFLAGS: -D warnings
   commands:
     - rustup install nightly
-    - cargo +nightly check --release
     - cargo +nightly build --release
     - cp -p target/release/galry target/release/galry.tmp
     - mv -f target/release/galry.tmp target/release/galry
@@ -70,6 +69,6 @@ depends_on:
 
 ---
 kind: signature
-hmac: 91599ad6a628f86a028f416c276ea593f974cfbd556eac13e511819c59b5cc5e
+hmac: 5d32320de71bd7a6d03e9987a00618f59781a37623ec0df6f3297f6334bf31d6
 
 ...
