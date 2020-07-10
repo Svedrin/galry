@@ -65,8 +65,11 @@ steps:
       exclude:
       - pull_request
 
+depends_on:
+- linux-amd64
+
 ---
 kind: signature
-hmac: 8e6fbd6bbe02667c505fe3aab3c68313d09b7830d225dd6819d545755b493db8
+hmac: 91599ad6a628f86a028f416c276ea593f974cfbd556eac13e511819c59b5cc5e
 
 ...
