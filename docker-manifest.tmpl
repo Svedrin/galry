@@ -1,0 +1,14 @@
+image: svedrin/galry:latest
+
+manifests:
+
+  - image: svedrin/galry:latest-amd64
+    platform:
+      architecture: amd64
+      os: linux
+
+  - image: svedrin/galry:latest-armv7l
+    platform:
+      architecture: arm
+      os: linux
+      variant: v7

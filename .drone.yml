@@ -23,10 +23,11 @@ steps:
   image: plugins/docker
   settings:
     repo: svedrin/galry
+    tags: latest-amd64
     username: svedrin
     password:
       from_secret: docker-registry-pw
-    cache_from: "svedrin/galry:latest"
+    cache_from: "svedrin/galry:latest-amd64"
   when:
     event:
       exclude:
@@ -34,7 +35,7 @@ steps:
 
 ---
 kind: pipeline
-name: linux-arm
+name: linux-armv7l
 
 platform:
   os: linux
@@ -55,6 +56,7 @@ steps:
   image: plugins/docker
   settings:
     repo: svedrin/galry
+    tags: latest-armv7l
     username: svedrin
     password:
       from_secret: docker-registry-pw
@@ -67,8 +69,34 @@ steps:
 depends_on:
 - linux-amd64
 
+
+---
+kind: pipeline
+type: docker
+name: manifest
+
+steps:
+- name: publish
+  image: plugins/manifest:1.2
+  settings:
+    ignore_missing: true
+    spec: docker-manifest.tmpl
+    username: svedrin
+    password:
+      from_secret: docker-registry-pw
+
+trigger:
+  event:
+    exclude:
+    - pull_request
+
+depends_on:
+- linux-amd64
+- linux-armv7l
+
+
 ---
 kind: signature
-hmac: 5d32320de71bd7a6d03e9987a00618f59781a37623ec0df6f3297f6334bf31d6
+hmac: 5d4882043676ba612c0a44338e62a145a7198bcf38575c481fb8bf5635d965c6
 
 ...
