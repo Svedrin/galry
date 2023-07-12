@@ -14,6 +14,7 @@ steps:
   commands:
     - apk add --no-cache musl-dev
     - rustup install nightly
+    - cargo +nightly update
     - cargo +nightly check --release
     - cargo +nightly build --release
     - cp -p target/release/galry target/release/galry.tmp
@@ -48,6 +49,7 @@ steps:
     RUSTFLAGS: -D warnings
   commands:
     - rustup install nightly
+    - cargo +nightly update
     - cargo +nightly build --release
     - cp -p target/release/galry target/release/galry.tmp
     - mv -f target/release/galry.tmp target/release/galry
