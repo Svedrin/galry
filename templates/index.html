@@ -20,8 +20,9 @@
   <ul id="albumlist" class="albumlist">
   {% for subalbum in albums %}
     {% if subalbum.1 %}
-      <li>{{ subalbum.0|capitalize }}<br />
+      <li>
         <a href="{{ url_for(album=subalbum.0)|safe }}">
+          {{ subalbum.0|capitalize }}<br />
           <div    id="div_{{ subalbum.0|safe }}" style="width: 660px; height: 340px; display: none; justify-content: center; align-items: center;">
             <div class="loader"></div>
           </div>
