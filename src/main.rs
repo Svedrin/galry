@@ -40,6 +40,10 @@ struct Options {
     #[structopt(env="GALRY_ROOT_DIR", parse(from_os_str))]
     root_dir: PathBuf,
 
+    /// Directory to store thumbnails in (defaults to root_dir)
+    #[structopt(short, long, env="GALRY_THUMBS_DIR", parse(from_os_str))]
+    thumbs_dir: Option<PathBuf>,
+
     /// Set this to have the zoom button in the Image view
     /// open the preview image rather than the original.
     #[structopt(short, long, env="GALRY_ZOOM_SHOWS_PREVIEW")]
@@ -204,7 +208,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
             .join(".".to_owned() + what);
         // Make sure it exists - return None if we can't
         if !dir_path.exists() {
-            std::fs::create_dir(&dir_path).ok()?;
+            std::fs::create_dir_all(&dir_path).ok()?;
         }
         // Make sure we're allowed to write to it
         if dir_path.metadata().ok()?.permissions().readonly() {
@@ -215,10 +219,12 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
     }
 
     let scaled_path =
-        if !opts.read_only_fs {
-            get_scaled_img_path(&rootdir, &path, &what)
-        } else {
+        if opts.read_only_fs {
             None
+        } else if let Some(thumbs_dir) = &opts.thumbs_dir {
+            get_scaled_img_path(&thumbs_dir, &path, &what)
+        } else {
+            get_scaled_img_path(&rootdir, &path, &what)
         };
 
     // Do we have that already as a file? If so, then return the file
