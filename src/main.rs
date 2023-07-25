@@ -323,10 +323,12 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                             .map(|entres| entres.unwrap())
                             .filter(|ent| ent.path().is_file())
                             .filter( |ent| (
-                                ent.extension().is_some() && (
-                                    ent.extension().unwrap().to_ascii_lowercase() == "jpg" ||
-                                    ent.extension().unwrap().to_ascii_lowercase() == "png"
-                                )
+                                if let Some(ext) = ent.path().extension() {
+                                    let lc = ext.to_ascii_lowercase();
+                                    lc == "jpg" || lc == "png"
+                                } else {
+                                    false
+                                }
                             ) )
                             .take(3)
                             .map(|ent| ent.file_name().to_string_lossy().into())
@@ -334,7 +336,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                     })
                     .unwrap_or(vec![]);
                 albums.push((String::from(entry_path_rel.to_string_lossy()), album_imgs));
-            } else if let Some(ext) = entry.extension() {
+            } else if let Some(ext) = entry.path().extension() {
                 let lc = ext.to_ascii_lowercase();
                 if lc == "jpg" || lc == "png" {
                     images.push(String::from(entry.file_name().to_string_lossy()));
