@@ -322,14 +322,23 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                             .filter(|entres| entres.is_ok())
                             .map(|entres| entres.unwrap())
                             .filter(|ent| ent.path().is_file())
+                            .filter( |ent| (
+                                ent.extension().is_some() && (
+                                    ent.extension().unwrap().to_ascii_lowercase() == "jpg" ||
+                                    ent.extension().unwrap().to_ascii_lowercase() == "png"
+                                )
+                            ) )
                             .take(3)
                             .map(|ent| ent.file_name().to_string_lossy().into())
                             .collect::<Vec<String>>())
                     })
                     .unwrap_or(vec![]);
                 albums.push((String::from(entry_path_rel.to_string_lossy()), album_imgs));
-            } else {
-                images.push(String::from(entry.file_name().to_string_lossy()));
+            } else if let Some(ext) = entry.extension() {
+                let lc = ext.to_ascii_lowercase();
+                if lc == "jpg" || lc == "png" {
+                    images.push(String::from(entry.file_name().to_string_lossy()));
+                }
             }
         }
 
