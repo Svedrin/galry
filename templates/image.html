@@ -36,4 +36,33 @@
   {% else %}
     <div class="contentpanel">EXIF information is unavailable</div>
   {% endif %}
+  <script>
+    let touchstartX = 0
+    let touchendX = 0
+
+    function checkDirection() {
+      {% if prev_picture %}
+      if (touchendX > touchstartX) {
+        window.location = '{{ prev_picture }}';
+      }
+      {% endif %}
+      {% if next_picture %}
+      if (touchendX < touchstartX) {
+        window.location = '{{ next_picture}}';
+      }
+      {% endif %}
+    }
+
+    document.addEventListener('touchstart', e => {
+      touchstartX = e.changedTouches[0].screenX
+    })
+
+    document.addEventListener('touchend', e => {
+      touchendX = e.changedTouches[0].screenX
+      checkDirection()
+    })
+
+    function img_swipe() {
+    }
+  </script>
 {% endblock content %}

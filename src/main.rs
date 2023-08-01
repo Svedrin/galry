@@ -370,6 +370,41 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                     .collect::<HashMap<String, String>>())
             });
 
+        // Find previous and next image
+        let mut album_imgs = std::fs::read_dir(&full_path.parent().unwrap())
+            .and_then(|rd| {
+                Ok(rd
+                    .filter(|entres| entres.is_ok())
+                    .map(|entres| entres.unwrap())
+                    .filter(|ent| ent.path().is_file())
+                    .filter( |ent| (
+                        if let Some(ext) = ent.path().extension() {
+                            let lc = ext.to_ascii_lowercase();
+                            lc == "jpg" || lc == "png"
+                        } else {
+                            false
+                        }
+                    ) )
+                    .map(|ent| ent.path())
+                    .collect::<Vec<PathBuf>>())
+            })
+            .unwrap_or(vec![]);
+        album_imgs.sort();
+        let this_img_pos = album_imgs.iter().position(|x| x == &full_path).expect("img not in parent dir!?");
+        let prev =
+            if this_img_pos >= 1 {
+                Some(album_imgs[this_img_pos - 1].file_name().unwrap().to_string_lossy())
+            } else {
+                None
+            };
+        let next =
+            if this_img_pos < album_imgs.len() - 1 {
+                Some(album_imgs[this_img_pos + 1].file_name().unwrap().to_string_lossy())
+            } else {
+                None
+            };
+        println!("{:?} {:?}", prev, next);
+
         // "" if not path else (path + "/")
         let parent = path.parent()
             .and_then(|p| p.to_string_lossy().into())
@@ -378,6 +413,8 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
         context.insert("image", &path.file_name().expect("fail name").to_string_lossy());
         context.insert("exif", &exif);
         context.insert("zoom_shows_preview", &opts.zoom_shows_preview);
+        context.insert("prev_picture", &prev);
+        context.insert("next_picture", &next);
         Ok(content::Html(
             TEMPLATES.render("image.html", &context)
                 .expect("failed to render template")
