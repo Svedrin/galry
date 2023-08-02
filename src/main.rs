@@ -322,14 +322,10 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                             .filter(|entres| entres.is_ok())
                             .map(|entres| entres.unwrap())
                             .filter(|ent| ent.path().is_file())
-                            .filter( |ent| (
-                                if let Some(ext) = ent.path().extension() {
-                                    let lc = ext.to_ascii_lowercase();
-                                    lc == "jpg" || lc == "png"
-                                } else {
-                                    false
-                                }
-                            ) )
+                            .filter( |ent| ent.path().extension().is_some_and( |ext| {
+                                let lc = ext.to_ascii_lowercase();
+                                lc == "jpg" || lc == "png"
+                            } ) )
                             .take(3)
                             .map(|ent| ent.file_name().to_string_lossy().into())
                             .collect::<Vec<String>>())
@@ -377,14 +373,10 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                     .filter(|entres| entres.is_ok())
                     .map(|entres| entres.unwrap())
                     .filter(|ent| ent.path().is_file())
-                    .filter( |ent| (
-                        if let Some(ext) = ent.path().extension() {
-                            let lc = ext.to_ascii_lowercase();
-                            lc == "jpg" || lc == "png"
-                        } else {
-                            false
-                        }
-                    ) )
+                    .filter( |ent| ent.path().extension().is_some_and( |ext| {
+                        let lc = ext.to_ascii_lowercase();
+                        lc == "jpg" || lc == "png"
+                    } ) )
                     .map(|ent| ent.path())
                     .collect::<Vec<PathBuf>>())
             })
