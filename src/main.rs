@@ -323,7 +323,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                             .map(|entres| entres.unwrap())
                             .filter(|ent| ent.path().is_file())
                             .filter( |ent| ent.path().extension().is_some_and(
-                                |ext| matches!(&ext.to_ascii_lowercase()[..], "jpg"|"png")
+                                |ext| matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
                             ) )
                             .take(3)
                             .map(|ent| ent.file_name().to_string_lossy().into())
@@ -373,7 +373,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                     .map(|entres| entres.unwrap())
                     .filter(|ent| ent.path().is_file())
                     .filter( |ent| ent.path().extension().is_some_and(
-                        |ext| matches!(&ext.to_ascii_lowercase()[..], "jpg"|"png")
+                        |ext| matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
                     ) )
                     .map(|ent| ent.path())
                     .collect::<Vec<PathBuf>>())
