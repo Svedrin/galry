@@ -1,4 +1,4 @@
-#![feature(proc_macro_hygiene, decl_macro)]
+#![feature(proc_macro_hygiene, decl_macro, let_chains)]
 
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate rocket;
@@ -341,11 +341,11 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                     String::from(entry_path_rel.to_string_lossy()),
                     album_imgs.into_iter().take(3).collect::<Vec<_>>()
                 ));
-            } else if let Some(ext) = entry.path().extension() {
-                let lc = ext.to_ascii_lowercase();
-                if lc == "jpg" || lc == "png" {
-                    images.push(String::from(entry.file_name().to_string_lossy()));
-                }
+            } else if
+                let Some(ext) = entry.path().extension() &&
+                matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
+            {
+                images.push(String::from(entry.file_name().to_string_lossy()));
             }
         }
 
