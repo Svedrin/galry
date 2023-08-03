@@ -381,19 +381,8 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
         let this_img_pos = album_imgs.iter().position(
             |x| x == &full_path.file_name().unwrap().to_string_lossy()
         ).expect("img not in parent dir!?");
-        let prev =
-            if this_img_pos >= 1 {
-                Some(&album_imgs[this_img_pos - 1])
-            } else {
-                None
-            };
-        let next =
-            if this_img_pos < album_imgs.len() - 1 {
-                Some(&album_imgs[this_img_pos + 1])
-            } else {
-                None
-            };
-        println!("{:?} {:?}", prev, next);
+        let prev = this_img_pos.checked_sub(1).and_then(|i| Some(&album_imgs[i]));
+        let next = album_imgs.iter().nth(this_img_pos + 1);
 
         // "" if not path else (path + "/")
         let parent = path.parent()
