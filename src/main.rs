@@ -10,12 +10,13 @@ extern crate tera;
 
 use std::collections::HashMap;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path,PathBuf};
 use exif::Reader;
 use rocket::State;
 use rocket::request::Request;
 use rocket::http::{ContentType, Status};
 use rocket::response::{self,content,NamedFile,Responder};
+use rand::seq::SliceRandom;
 use structopt::StructOpt;
 use tera::{Context, Tera};
 use image::{GenericImageView, DynamicImage, ImageOutputFormat, ImageError};
@@ -261,6 +262,22 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
     Ok(ImageFromFileOrMem::from_image(thumbnail)?)
 }
 
+fn get_album_images(album_dir: &Path) -> Vec<String> {
+    std::fs::read_dir(album_dir)
+        .and_then(|rd| {
+            Ok(rd
+                .filter(|entres| entres.is_ok())
+                .map(|entres| entres.unwrap())
+                .filter(|ent| ent.path().is_file())
+                .filter(|ent| ent.path().extension().is_some_and(
+                    |ext| matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
+                ))
+                .map(|ent| ent.file_name().to_string_lossy().into())
+                .collect())
+        })
+        .unwrap_or(vec![])
+}
+
 #[get("/<path..>", rank=2)]
 fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<String>, GalryError> {
     let rootdir = &opts.root_dir;
@@ -299,6 +316,8 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
             .unwrap_or("/".into())
     );
 
+    let mut rng = rand::thread_rng();
+
     if full_path.is_dir() {
         let mut albums = Vec::new();
         let mut images = Vec::new();
@@ -316,21 +335,12 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
             let entry_path_abs = entry.path();
             let entry_path_rel = path.join(entry.file_name());
             if entry_path_abs.is_dir() {
-                let album_imgs = std::fs::read_dir(&entry_path_abs)
-                    .and_then(|rd| {
-                        Ok(rd
-                            .filter(|entres| entres.is_ok())
-                            .map(|entres| entres.unwrap())
-                            .filter(|ent| ent.path().is_file())
-                            .filter( |ent| ent.path().extension().is_some_and(
-                                |ext| matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
-                            ) )
-                            .take(3)
-                            .map(|ent| ent.file_name().to_string_lossy().into())
-                            .collect::<Vec<String>>())
-                    })
-                    .unwrap_or(vec![]);
-                albums.push((String::from(entry_path_rel.to_string_lossy()), album_imgs));
+                let mut album_imgs = get_album_images(&entry_path_abs);
+                album_imgs.shuffle(&mut rng);
+                albums.push((
+                    String::from(entry_path_rel.to_string_lossy()),
+                    album_imgs.into_iter().take(3).collect::<Vec<_>>()
+                ));
             } else if let Some(ext) = entry.path().extension() {
                 let lc = ext.to_ascii_lowercase();
                 if lc == "jpg" || lc == "png" {
@@ -366,30 +376,20 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
             });
 
         // Find previous and next image
-        let mut album_imgs = std::fs::read_dir(&full_path.parent().unwrap())
-            .and_then(|rd| {
-                Ok(rd
-                    .filter(|entres| entres.is_ok())
-                    .map(|entres| entres.unwrap())
-                    .filter(|ent| ent.path().is_file())
-                    .filter( |ent| ent.path().extension().is_some_and(
-                        |ext| matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
-                    ) )
-                    .map(|ent| ent.path())
-                    .collect::<Vec<PathBuf>>())
-            })
-            .unwrap_or(vec![]);
+        let mut album_imgs = get_album_images(full_path.parent().unwrap());
         album_imgs.sort();
-        let this_img_pos = album_imgs.iter().position(|x| x == &full_path).expect("img not in parent dir!?");
+        let this_img_pos = album_imgs.iter().position(
+            |x| x == &full_path.file_name().unwrap().to_string_lossy()
+        ).expect("img not in parent dir!?");
         let prev =
             if this_img_pos >= 1 {
-                Some(album_imgs[this_img_pos - 1].file_name().unwrap().to_string_lossy())
+                Some(&album_imgs[this_img_pos - 1])
             } else {
                 None
             };
         let next =
             if this_img_pos < album_imgs.len() - 1 {
-                Some(album_imgs[this_img_pos + 1].file_name().unwrap().to_string_lossy())
+                Some(&album_imgs[this_img_pos + 1])
             } else {
                 None
             };
