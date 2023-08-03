@@ -37,28 +37,36 @@
     <div class="contentpanel">EXIF information is unavailable</div>
   {% endif %}
   <script>
-    let touchstartX = 0
-    let touchendX = 0
+    let touchstart = {x: 0, y: 0};
+    let touchend   = {x: 0, y: 0};
 
     function checkDirection() {
+      if (Math.abs(touchend.y - touchstart.y) > Math.abs(touchend.x - touchstart.x)) {
+        // swiped vertically -> scrolled -> ignore
+        return;
+      }
       {% if prev_picture %}
-      if (touchendX > touchstartX) {
+      if (touchend.x > touchstart.x) { // swiped right
         window.location = '{{ prev_picture }}';
       }
       {% endif %}
       {% if next_picture %}
-      if (touchendX < touchstartX) {
+      if (touchend.x < touchstart.x) { // swiped left
         window.location = '{{ next_picture}}';
       }
       {% endif %}
     }
 
     document.addEventListener('touchstart', e => {
-      touchstartX = e.changedTouches[0].screenX
+      if (e.changedTouches.length > 1) return;
+      touchstart.x = e.changedTouches[0].screenX
+      touchstart.y = e.changedTouches[0].screenY
     })
 
     document.addEventListener('touchend', e => {
-      touchendX = e.changedTouches[0].screenX
+      if (e.changedTouches.length > 1) return;
+      touchend.x = e.changedTouches[0].screenX
+      touchend.y = e.changedTouches[0].screenY
       checkDirection()
     })
 
