@@ -201,9 +201,9 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
     // Thus the code is structured such that it tries to build the path we're going
     // to use, and along the way, makes sure that everything exists / is accessible.
     // If it hits any roadblocks, it just returns None. (Separate fn so ? does this.)
-    fn get_scaled_img_path(rootdir: &PathBuf, path: &PathBuf, what: &String) -> Option<PathBuf> {
+    fn get_scaled_img_path(rootdir: &Path, path: &PathBuf, what: &String) -> Option<PathBuf> {
         // a/b/c/d.jpg -> a/b/c/.<what>
-        let dir_path = rootdir.as_path()
+        let dir_path = rootdir
             .join(path)
             .parent()?
             .join(".".to_owned() + what);
@@ -223,14 +223,14 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
         if opts.read_only_fs {
             None
         } else if let Some(thumbs_dir) = &opts.thumbs_dir {
-            get_scaled_img_path(&thumbs_dir, &path, &what)
+            get_scaled_img_path(thumbs_dir, &path, &what)
         } else {
-            get_scaled_img_path(&rootdir, &path, &what)
+            get_scaled_img_path(rootdir, &path, &what)
         };
 
     // Do we have that already as a file? If so, then return the file
-    if scaled_path.is_some() && scaled_path.as_ref().unwrap().exists() {
-        return Ok(ImageFromFileOrMem::from_path(scaled_path.unwrap()));
+    if let Some(scaled_path) = &scaled_path && scaled_path.exists() {
+        return Ok(ImageFromFileOrMem::from_path(scaled_path.to_owned()));
     }
 
     // We don't have a file, so we need to scale the source image down
@@ -256,7 +256,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
     // If we have a path, try to save the image. If that fails, no biggie
     if let Some(scaled_path) = scaled_path {
         let _ = thumbnail
-            .save(&scaled_path);
+            .save(scaled_path);
     }
 
     Ok(ImageFromFileOrMem::from_image(thumbnail)?)
@@ -264,18 +264,17 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
 
 fn get_album_images(album_dir: &Path) -> Vec<String> {
     std::fs::read_dir(album_dir)
-        .and_then(|rd| {
-            Ok(rd
-                .filter(|entres| entres.is_ok())
-                .map(|entres| entres.unwrap())
+        .map(|rd| {
+            rd
+                .filter_map(|entres| entres.ok())
                 .filter(|ent| ent.path().is_file())
                 .filter(|ent| ent.path().extension().is_some_and(
                     |ext| matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
                 ))
                 .map(|ent| ent.file_name().to_string_lossy().into())
-                .collect())
+                .collect()
         })
-        .unwrap_or(vec![])
+        .unwrap_or_default()
 }
 
 #[get("/<path..>", rank=2)]
@@ -303,7 +302,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
             .collect::<Vec<String>>();
 
         breadcrumbs_words.into_iter()
-            .zip(breadcrumbs_paths.into_iter())
+            .zip(breadcrumbs_paths)
             .collect()
     };
 
@@ -312,7 +311,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
     context.insert(
         "rootdir",
         &root_path.file_name()
-            .and_then(|rp| Some(rp.to_string_lossy()))
+            .map(|rp| rp.to_string_lossy())
             .unwrap_or("/".into())
     );
 
@@ -323,12 +322,11 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
         let mut images = Vec::new();
 
         let mut entries: Vec<_> = std::fs::read_dir(full_path)?
-            .filter(|r| r.is_ok())
-            .map(|r| r.unwrap())
+            .filter_map(|r| r.ok())
             .collect();
         entries.sort_by_key(|dir| dir.path());
         for entry in entries {
-            if entry.file_name().to_string_lossy().starts_with(".") ||
+            if entry.file_name().to_string_lossy().starts_with('.') ||
                 entry.file_name().to_string_lossy().eq_ignore_ascii_case("lost+found") {
                 continue;
             }
@@ -365,14 +363,13 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                 Reader::new()
                     .read_from_container(&mut std::io::BufReader::new(&file)).ok()
             })
-            .and_then(|exif| {
-                Some(exif.fields()
+            .map(|exif| {
+                exif.fields()
                     .map(|field| (
                         field.tag.to_string(),
                         field.display_value().with_unit(&exif).to_string()
                     ))
-                    .into_iter()
-                    .collect::<HashMap<String, String>>())
+                    .collect::<HashMap<String, String>>()
             });
 
         // Find previous and next image
@@ -381,8 +378,8 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
         let this_img_pos = album_imgs.iter().position(
             |x| x == &full_path.file_name().unwrap().to_string_lossy()
         ).expect("img not in parent dir!?");
-        let prev = this_img_pos.checked_sub(1).and_then(|i| Some(&album_imgs[i]));
-        let next = album_imgs.iter().nth(this_img_pos + 1);
+        let prev = this_img_pos.checked_sub(1).map(|i| &album_imgs[i]);
+        let next = album_imgs.get(this_img_pos + 1);
 
         // "" if not path else (path + "/")
         let parent = path.parent()
