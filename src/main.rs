@@ -201,7 +201,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
     // Thus the code is structured such that it tries to build the path we're going
     // to use, and along the way, makes sure that everything exists / is accessible.
     // If it hits any roadblocks, it just returns None. (Separate fn so ? does this.)
-    fn get_scaled_img_path(rootdir: &Path, path: &PathBuf, what: &String) -> Option<PathBuf> {
+    fn get_scaled_img_path(rootdir: &Path, path: &PathBuf, what: &str) -> Option<PathBuf> {
         // a/b/c/d.jpg -> a/b/c/.<what>
         let dir_path = rootdir
             .join(path)
@@ -230,7 +230,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
 
     // Do we have that already as a file? If so, then return the file
     if let Some(scaled_path) = &scaled_path && scaled_path.exists() {
-        return Ok(ImageFromFileOrMem::from_path(scaled_path.to_owned()));
+        return Ok(ImageFromFileOrMem::from_path(scaled_path.clone()));
     }
 
     // We don't have a file, so we need to scale the source image down
