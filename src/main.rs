@@ -206,7 +206,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
         let dir_path = rootdir
             .join(path)
             .parent()?
-            .join(".".to_owned() + what);
+            .join(String::from(".") + what);
         // Make sure it exists - return None if we can't
         if !dir_path.exists() {
             std::fs::create_dir_all(&dir_path).ok()?;
