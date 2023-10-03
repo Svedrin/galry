@@ -159,8 +159,8 @@ fn make_url_for(args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value
             // for each of these ^, retrieve the value from `args`
             .map( |param| {
                 args.get(param)
-                    .and_then(|arg| tera::from_value::<String>(arg.to_owned()).ok())
-                    .unwrap_or(String::from(""))
+                    .and_then(|argval| argval.as_str())
+                    .unwrap_or("")
             })
             // reduce them by joining into a single PathBuf
             .fold(
