@@ -190,20 +190,20 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
         return Err(GalryError::NotFound("image does not exist".into()));
     }
 
-    if what == "img" {
-        if let Some(ext) = img_path.extension() &&
-            matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
-        {
-            // Serve the image directly, without scaling
-            return Ok(ImageFromFileOrMem::from_path(img_path));
-        }
-
+    if let Some(ext) = img_path.extension() &&
+        matches!(ext.to_ascii_lowercase().to_str(), Some("nef"))
+    {
         return Ok(ImageFromFileOrMem::from_image(
             image::load(
                 std::io::BufReader::new(File::open(img_path.clone())?),
                 ImageFormat::Tiff
             )?
         )?);
+    }
+
+    if what == "img" {
+        // Serve the image directly, without scaling
+        return Ok(ImageFromFileOrMem::from_path(img_path));
     }
 
     // If path is a/b/c/d.jpg,         we'll place the thumbs/previews in
