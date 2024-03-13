@@ -10,6 +10,7 @@ extern crate tera;
 
 use std::collections::HashMap;
 use std::io;
+use std::fs::File;
 use std::path::{Path,PathBuf};
 use exif::Reader;
 use rocket::State;
@@ -19,7 +20,7 @@ use rocket::response::{self,content,NamedFile,Responder};
 use rand::seq::SliceRandom;
 use structopt::StructOpt;
 use tera::{Context, Tera};
-use image::{GenericImageView, DynamicImage, ImageOutputFormat, ImageError};
+use image::{GenericImageView, DynamicImage, ImageOutputFormat, ImageError, ImageFormat};
 
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
@@ -189,6 +190,17 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
         return Err(GalryError::NotFound("image does not exist".into()));
     }
 
+    if let Some(ext) = img_path.extension() &&
+        matches!(ext.to_ascii_lowercase().to_str(), Some("nef"))
+    {
+        return Ok(ImageFromFileOrMem::from_image(
+            image::load(
+                std::io::BufReader::new(File::open(img_path.clone())?),
+                ImageFormat::Tiff
+            )?
+        )?);
+    }
+
     if what == "img" {
         // Serve the image directly, without scaling
         return Ok(ImageFromFileOrMem::from_path(img_path));
@@ -269,7 +281,7 @@ fn get_album_images(album_dir: &Path) -> Vec<String> {
                 .filter_map(|entres| entres.ok())
                 .filter(|ent| ent.path().is_file())
                 .filter(|ent| ent.path().extension().is_some_and(
-                    |ext| matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
+                    |ext| matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png")|Some("nef"))
                 ))
                 .map(|ent| ent.file_name().to_string_lossy().into())
                 .collect()
@@ -341,7 +353,7 @@ fn serve_page(path: PathBuf, opts: State<Options>) -> Result<content::Html<Strin
                 ));
             } else if
                 let Some(ext) = entry.path().extension() &&
-                matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png"))
+                matches!(ext.to_ascii_lowercase().to_str(), Some("jpg")|Some("png")|Some("nef"))
             {
                 images.push(String::from(entry.file_name().to_string_lossy()));
             }
