@@ -74,19 +74,21 @@ impl ImageFromFileOrMem {
         img.write_to(&mut writer, ImageOutputFormat::Jpeg(90))?;
         Ok(Self::ImageInMem(writer.into_inner().expect("sad panda")))
     }
+}
 
-    fn convert_raw_to_preview(path: PathBuf) -> Result<Self, String> {
-        let decoded = imagepipe::simple_decode_8bit(path, 0, 0)?;
-        let mut writer = std::io::BufWriter::new(Vec::new());
-        let mut jpg_encoder = image::jpeg::JpegEncoder::new_with_quality(&mut writer, 90);
-        jpg_encoder.encode(
-            &decoded.data,
-            decoded.width as u32,
-            decoded.height as u32,
-            ColorType::Rgb8
-        ).map_err(|err| err.to_string() )?;
-        Ok(Self::ImageInMem(writer.into_inner().expect("sad panda")))
-    }
+fn load_raw_image(path: &PathBuf) -> Result<DynamicImage, String> {
+    let decoded = imagepipe::simple_decode_8bit(path, 0, 0)?;
+    let mut buffer = std::io::Cursor::new(Vec::new());
+    let mut jpg_encoder = image::jpeg::JpegEncoder::new_with_quality(&mut buffer, 90);
+    jpg_encoder.encode(
+        &decoded.data,
+        decoded.width as u32,
+        decoded.height as u32,
+        ColorType::Rgb8
+    ).map_err(|err| err.to_string() )?;
+    buffer.set_position(0);
+    image::load(buffer,ImageFormat::Jpeg)
+        .map_err(|err| err.to_string())
 }
 
 impl<'r> Responder<'r> for ImageFromFileOrMem {
@@ -234,7 +236,7 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
     // Thus the code is structured such that it tries to build the path we're going
     // to use, and along the way, makes sure that everything exists / is accessible.
     // If it hits any roadblocks, it just returns None. (Separate fn so ? does this.)
-    fn get_scaled_img_path(rootdir: &Path, path: &PathBuf, what: &str) -> Option<PathBuf> {
+    fn get_scaled_img_path(rootdir: &Path, path: &PathBuf, what: &str, is_raw: bool) -> Option<PathBuf> {
         // a/b/c/d.jpg -> a/b/c/.<what>
         let dir_path = rootdir
             .join(path)
@@ -249,16 +251,20 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
             return None;
         }
         // a/b/c/.<what> -> a/b/c/.<what>/d.jpg
-        Some(dir_path.join(path.file_name()?))
+        let mut fpath = dir_path.join(path.file_name()?);
+        if is_raw {
+            fpath.set_extension("nef.jpg");
+        }
+        Some(fpath)
     }
 
     let scaled_path =
         if opts.read_only_fs {
             None
         } else if let Some(thumbs_dir) = &opts.thumbs_dir {
-            get_scaled_img_path(thumbs_dir, &path, &what)
+            get_scaled_img_path(thumbs_dir, &path, &what, is_raw)
         } else {
-            get_scaled_img_path(rootdir, &path, &what)
+            get_scaled_img_path(rootdir, &path, &what, is_raw)
         };
 
     // Do we have that already as a file? If so, then return the file
@@ -266,23 +272,27 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
         return Ok(ImageFromFileOrMem::from_path(scaled_path.clone()));
     }
 
-    // Handle raw files
-    if is_raw {
-        // Are we doing a thumbnail for a raw file? Then read it as a TIFF image to get its preview
-        if what == "thumb" {
-            return Ok(ImageFromFileOrMem::from_image(
-                image::load(
-                    std::io::BufReader::new(File::open(img_path.clone())?),
-                    ImageFormat::Tiff
-                )?
-            )?);
-        }
-        // For previews, convert the raw image
-        return Ok(ImageFromFileOrMem::convert_raw_to_preview(img_path)?);
+    // Are we doing a thumbnail for a raw file? Then read it as a TIFF image to get its preview
+    if what == "thumb" && is_raw {
+        return Ok(ImageFromFileOrMem::from_image(
+            image::load(
+                std::io::BufReader::new(File::open(img_path.clone())?),
+                ImageFormat::Tiff
+            )?
+        )?);
     }
 
     // We don't have a file, so we need to scale the source image down
-    let img = image::open(&img_path)?;
+    let img = match is_raw {
+        true => load_raw_image(&img_path)?,
+        false => image::open(&img_path)?
+    };
+
+    // Are we doing an unscaled raw image? Then we're done, return
+    if what == "img" && is_raw {
+        // Serve the image directly, without scaling
+        return Ok(ImageFromFileOrMem::from_image(img)?);
+    }
 
     // Scale the image either to 1920x1080 for previews, or 350x250 for thumbnails.
     let (width, height) =
