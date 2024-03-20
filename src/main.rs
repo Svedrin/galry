@@ -7,6 +7,7 @@ extern crate clap;
 extern crate exif;
 extern crate image;
 extern crate tera;
+extern crate imagepipe;
 
 use std::collections::HashMap;
 use std::io;
@@ -20,7 +21,7 @@ use rocket::response::{self,content,NamedFile,Responder};
 use rand::seq::SliceRandom;
 use structopt::StructOpt;
 use tera::{Context, Tera};
-use image::{GenericImageView, DynamicImage, ImageOutputFormat, ImageError, ImageFormat};
+use image::{GenericImageView, DynamicImage, ImageOutputFormat, ImageError, ImageFormat, ColorType};
 
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
@@ -73,6 +74,19 @@ impl ImageFromFileOrMem {
         img.write_to(&mut writer, ImageOutputFormat::Jpeg(90))?;
         Ok(Self::ImageInMem(writer.into_inner().expect("sad panda")))
     }
+
+    fn convert_raw_to_preview(path: PathBuf) -> Result<Self, String> {
+        let decoded = imagepipe::simple_decode_8bit(path, 0, 0)?;
+        let mut writer = std::io::BufWriter::new(Vec::new());
+        let mut jpg_encoder = image::jpeg::JpegEncoder::new_with_quality(&mut writer, 90);
+        jpg_encoder.encode(
+            &decoded.data,
+            decoded.width as u32,
+            decoded.height as u32,
+            ColorType::Rgb8
+        ).map_err(|err| err.to_string() )?;
+        Ok(Self::ImageInMem(writer.into_inner().expect("sad panda")))
+    }
 }
 
 impl<'r> Responder<'r> for ImageFromFileOrMem {
@@ -99,6 +113,7 @@ enum GalryError {
     IoError(io::Error),
     BadRequest(String),
     NotFound(String),
+    OtherError(String),
 }
 
 impl<'r> Responder<'r> for GalryError {
@@ -124,6 +139,12 @@ impl<'r> Responder<'r> for GalryError {
                     format!("IO Error: {:#?}", err)
                 ).respond_to(req)
             }
+            GalryError::OtherError(err) => {
+                response::status::Custom(
+                    Status::InternalServerError,
+                    format!("Other Error: {:#?}", err)
+                ).respond_to(req)
+            }
         }
     }
 }
@@ -137,6 +158,12 @@ impl From<image::ImageError> for GalryError {
 impl From<io::Error> for GalryError {
     fn from(err: io::Error) -> Self {
         Self::IoError(err)
+    }
+}
+
+impl From<String> for GalryError {
+    fn from(err: String) -> Self {
+        Self::OtherError(err)
     }
 }
 
@@ -190,18 +217,12 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
         return Err(GalryError::NotFound("image does not exist".into()));
     }
 
-    if let Some(ext) = img_path.extension() &&
-        matches!(ext.to_ascii_lowercase().to_str(), Some("nef"))
-    {
-        return Ok(ImageFromFileOrMem::from_image(
-            image::load(
-                std::io::BufReader::new(File::open(img_path.clone())?),
-                ImageFormat::Tiff
-            )?
-        )?);
-    }
+    let is_raw = match img_path.extension() {
+        Some(ext) => matches!(ext.to_ascii_lowercase().to_str(), Some("nef")),
+        None => false
+    };
 
-    if what == "img" {
+    if what == "img" && !is_raw {
         // Serve the image directly, without scaling
         return Ok(ImageFromFileOrMem::from_path(img_path));
     }
@@ -243,6 +264,21 @@ fn serve_file(what: String, path: PathBuf, opts: State<Options>) -> Result<Image
     // Do we have that already as a file? If so, then return the file
     if let Some(scaled_path) = &scaled_path && scaled_path.exists() {
         return Ok(ImageFromFileOrMem::from_path(scaled_path.clone()));
+    }
+
+    // Handle raw files
+    if is_raw {
+        // Are we doing a thumbnail for a raw file? Then read it as a TIFF image to get its preview
+        if what == "thumb" {
+            return Ok(ImageFromFileOrMem::from_image(
+                image::load(
+                    std::io::BufReader::new(File::open(img_path.clone())?),
+                    ImageFormat::Tiff
+                )?
+            )?);
+        }
+        // For previews, convert the raw image
+        return Ok(ImageFromFileOrMem::convert_raw_to_preview(img_path)?);
     }
 
     // We don't have a file, so we need to scale the source image down
