@@ -39,6 +39,7 @@
   <script>
     let touchstart = {x: 0, y: 0};
     let touchend   = {x: 0, y: 0};
+    let ignore     = false;
 
     function checkDirection() {
       if (Math.abs(touchend.y - touchstart.y) / Math.abs(touchend.x - touchstart.x) > 0.20) {
@@ -58,13 +59,22 @@
     }
 
     document.addEventListener('touchstart', e => {
-      if (e.changedTouches.length > 1) return;
+      if (e.touches.length > 1) { // more than one finger -> Zoom -> ignore
+        ignore = true;
+        return;
+      }
       touchstart.x = e.changedTouches[0].screenX
       touchstart.y = e.changedTouches[0].screenY
     })
 
     document.addEventListener('touchend', e => {
-      if (e.changedTouches.length > 1) return;
+      if (ignore) {
+        // If this was the last finger during a zoom, reset
+        if (e.touches.length == 0) {
+          ignore = false;
+        }
+        return;
+      }
       touchend.x = e.changedTouches[0].screenX
       touchend.y = e.changedTouches[0].screenY
       checkDirection()
