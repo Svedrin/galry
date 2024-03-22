@@ -76,7 +76,7 @@
         }
         return;
       }
-      if (window.visualViewport.scale > initialViewport) {
+      if (window.visualViewport.scale > initialViewport * 1.005) {
         // We're zoomed in, so users want to move the image, not go to the next one
         return;
       }
