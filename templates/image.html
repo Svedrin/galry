@@ -41,7 +41,7 @@
     let touchend   = {x: 0, y: 0};
 
     function checkDirection() {
-      if (Math.abs(touchend.y - touchstart.y) > Math.abs(touchend.x - touchstart.x)) {
+      if (Math.abs(touchend.y - touchstart.y) / Math.abs(touchend.x - touchstart.x) > 0.20) {
         // swiped vertically -> scrolled -> ignore
         return;
       }
@@ -70,7 +70,5 @@
       checkDirection()
     })
 
-    function img_swipe() {
-    }
   </script>
 {% endblock content %}
