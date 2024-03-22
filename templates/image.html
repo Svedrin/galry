@@ -40,6 +40,7 @@
     let touchstart = {x: 0, y: 0};
     let touchend   = {x: 0, y: 0};
     let ignore     = false;
+    let initialViewport = window.visualViewport.scale;
 
     function checkDirection() {
       if (Math.abs(touchend.y - touchstart.y) / Math.abs(touchend.x - touchstart.x) > 0.20) {
@@ -73,6 +74,10 @@
         if (e.touches.length == 0) {
           ignore = false;
         }
+        return;
+      }
+      if (window.visualViewport.scale > initialViewport) {
+        // We're zoomed in, so users want to move the image, not go to the next one
         return;
       }
       touchend.x = e.changedTouches[0].screenX
