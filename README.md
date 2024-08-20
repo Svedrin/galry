@@ -19,3 +19,12 @@ Galry supports a few command line options, each of which can also be configured 
 * `-z`, `--zoom-shows-preview` (env: `GALRY_ZOOM_SHOWS_PREVIEW=true`): Set this to have the zoom button in the Image view open the preview image rather than the original.
 
 The latter two options can be useful when serving images from slow media (such as an NFS share or HDDs that spin down). By saving the Thumbnails on an SSD and enabling `-z`, Galry will load the image only once from the slow disks and then grab them from the cache on subsequent requests.  
+
+# Building galry
+
+You need to have the nightly toolchain installed to build galry:
+
+```
+rustup install nightly
+cargo +nightly build --release
+```
