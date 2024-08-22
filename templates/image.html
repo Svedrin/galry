@@ -20,16 +20,16 @@
         alt="{{ image }}" /></a></div>
     {% endif %}
   </div>
-  {% if exif %}
+  {% if exif and exif['DateTimeOriginal'] %}
     <div class="contentpanel">
-      Shot with {{ exif['Model'] }} at {{ exif['DateTimeOriginal'] }}
+      Shot {% if exif['Model'] %}with {{ exif['Model'] }}{% endif %} at {{ exif['DateTimeOriginal'] }}
       {% if imgformat %}              — <span title="Format">{{ imgformat }}</span>{% endif %}
       {% if exif['ExposureTime'] %}   — <span title="Exposure Time">{{ exif['ExposureTime'] }}</span>{% endif %}
       {% if exif['ExposureBiasValue'] %} (<span title="Exposure Bias">{{ exif['ExposureBiasValue'] }})</span>{% endif %}
       {% if exif['ISOSpeedRatings'] %}— <span title="ISO">ISO {{ exif['ISOSpeedRatings'] }}</span>{% endif %}
       {% if exif['FocalLength'] %}    — <span title="Focal Length">{{ exif['FocalLength'] }}</span>{% endif %}
       {% if exif['FNumber'] %}        — <span title="F Number">{{ exif['FNumber'] }}</span>{% endif %}
-      {% if exif['Software'] != '"Ver.1.01 "' %}
+      {% if exif['Software'] and exif['Software'] != '"Ver.1.01 "' %}
         — Revised using {{ exif['Software'] }}
       {% endif %}
     </div>
