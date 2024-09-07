@@ -20,7 +20,7 @@ Galry supports a few command line options, each of which can also be configured 
 
 The latter two options can be useful when serving images from slow media (such as an NFS share or HDDs that spin down). By saving the Thumbnails on an SSD and enabling `-z`, Galry will load the image only once from the slow disks and then grab them from the cache on subsequent requests.  
 
-# Building galry
+# Building galry on local host
 
 You need to have the nightly toolchain installed to build galry:
 
@@ -28,3 +28,19 @@ You need to have the nightly toolchain installed to build galry:
 rustup install nightly
 cargo +nightly build --release
 ```
+
+# Building galry in Docker
+
+To create a galry docker image without needing to have rust installed locally, the ```Dockerfile.build``` will use a mulistage build to build galry in an alpine/rust container and put the result in a plain alpine container ready to run.
+
+```
+docker build -t galry -f Dockerfile.build .
+```
+
+# Running Docker image
+
+```
+docker run --rm -p 8000:8000 -v <path_to_images>:/pictures:ro svedrin/galry
+```
+
+Replace ```svedrin/galry``` with just ```galry``` if you used the ```Dockerfile.build``` to build your own docker image.
