@@ -1,0 +1,31 @@
+# Do a multistage build.
+# Build galry in a rust container, and then copy the binary to a plain alpine
+# container
+FROM rust:alpine AS build
+
+# The pear_codegen v0.1.5 library gives this error unless built with nightly:
+# Error: Pear requires a 'dev' or 'nightly' version of rustc.
+# So install nightly build of rust
+RUN rustup install nightly
+
+# This is required by some libraries (like peargen)
+RUN apk add --no-cache musl-dev
+
+# Copy galry sources into build container
+COPY . /app
+WORKDIR /app
+
+# Build galry
+RUN cargo +nightly build --release
+
+# Now copy it into an empty alpine container
+FROM alpine as runtime
+RUN apk add --no-cache dumb-init
+
+COPY --from=build /app/target/release/galry /usr/local/bin/galry
+
+WORKDIR /pictures
+
+EXPOSE 8000
+ENTRYPOINT ["dumb-init", "--"]
+CMD [ "/usr/local/bin/galry", "/pictures" ]
